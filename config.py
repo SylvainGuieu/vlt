@@ -44,7 +44,7 @@ def package_dir(relative_path):
 
 config = {
     # list of directories containing the CDT files
-    "cdtpath": env_path("introot", "CDT"),
+    "cdtpath": env_path("INTROOT", "CDT"),
 
     # list of directory where cdt temporaly py file will be
     # created
@@ -53,7 +53,7 @@ config = {
     "cdtdebug": False,
 
     # list of directories containing the dictionary files
-    "dictionarypath": env_path("ins_root", "SYSTEM/Dictionary")+
+    "dictionarypath": env_path("INS_ROOT", "SYSTEM/Dictionary")+
                       env_path("VLTROOT", "config")
 
 }
