@@ -19,8 +19,16 @@ vlt.setDefaultProcess(pnoc)
 log("ok")
 
 log("Reading Dictionaries ...", end=" ")
-log("ACS",end=" ")
-acs = readDictionary(dpr_id+"_ACS")
+if dpr_id == "PIONIER":
+    log("ACS", end=" ")
+    acs = readDictionary(dpr_id+"_ACS")
+    aos = vlt.FunctionDict()
+elif dpr_id == "BETI":
+    log("AOS", end=" ")
+    aos = readDictionary(dpr_id+"_AOS")
+    acs = vlt.FunctionDict()
+
+
 log( "CFG",end=" ")
 cfg = readDictionary(dpr_id+"_CFG")
 log( "DCS",end=" ")
@@ -34,7 +42,7 @@ dpr = readDictionary("DPR")
 log( "OSB",end=" ")
 osb = readDictionary("DPR")
 log( " => allf")
-allf = acs + cfg + dcs + ics + os + dpr + osb
+allf = acs + aos + cfg + dcs + ics + os + dpr + osb
 
 
 
