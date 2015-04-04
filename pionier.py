@@ -4,25 +4,31 @@ from vlt import processClass, devices, readDictionary, EmbigousKey
 
 def log(*msg, **kwargs):
     print(*msg, **kwargs)
-
+import os
 import vlt
+dpr_id = os.getenv("DPR_ID")
+dpr_id = dpr_id or "PIONIER"
 
 log( "opening new process pnoc ...",end=" ")
-pnoc = vlt.openProcess("pnoControl")
-vlt.setDefaultProcess(pnoc)
-log( "ok")
+if dpr_id == "PIONIER":
+    pnoc = vlt.openProcess("pnoControl")
+elif dpr_id == "BETI":
+    pnoc = vlt.openProcess("beoControl")
 
-log( "Reading Dictionaries ...",end=" ")
-log( "ACS",end=" ")
-acs = readDictionary("PIONIER_ACS")
+vlt.setDefaultProcess(pnoc)
+log("ok")
+
+log("Reading Dictionaries ...", end=" ")
+log("ACS",end=" ")
+acs = readDictionary(dpr_id"_ACS")
 log( "CFG",end=" ")
-cfg = readDictionary("PIONIER_CFG")
+cfg = readDictionary(dpr_id"_CFG")
 log( "DCS",end=" ")
-dcs = readDictionary("PIONIER_DCS")
+dcs = readDictionary(dpr_id"_DCS")
 log( "ICS",end=" ")
-ics = readDictionary("PIONIER_ICS")
+ics = readDictionary(dpr_id"_ICS")
 log( "OS",end=" ")
-os  = readDictionary("PIONIER_OS")
+os  = readDictionary(dpr_id"_OS")
 log( "DPR",end=" ")
 dpr = readDictionary("DPR")
 log( "OSB",end=" ")
