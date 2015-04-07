@@ -69,7 +69,7 @@ class PionierDetector(devices.Detector):
 
         if "SUBWINS" in keylist and self["SUBWINS"].hasValue():
             subs_status = []
-            for i in range(1, self["SUBWINS"]+1):
+            for i in range(1, self["SUBWINS"].getValue()+1):
                 subs_status.expend(
                     self.restrict("SUBWIN%d"%i).msgs()
                 )
