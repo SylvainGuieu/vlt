@@ -2573,19 +2573,26 @@ class FunctionDict(dict):
             context = self.copy(True)
             for k,f in values.iteritems():
                 context[k] = f
+
         elif context is False:
             context = None
 
-        if withvalue:
-            keys = list(set([k for k,f in self.iteritems() if f.hasValue(default)]+
-                            [k for k in values]
-                        ))
-        else:
-            keys = [k for k in values]
 
         out = []
-        for k in keys:
-            out.extend(self[k].cmd(value=values.get(k,None), default=default, context=context))
+        funcs = []
+        for k in values:
+            f = self[k]
+            if not f in funcs:
+                out.extend(f.cmd(value=values.get(k),
+                           default=default, context=context)
+                          )
+            funcs.append(f)
+        if withvalue:
+            for k,f in self.iteritems():
+                if f.hasValue(default):
+                    if not f in funcs:
+                        out.extend(f.cmd(default=default,context=context))
+
         return out
     cmd = tocmd
 
