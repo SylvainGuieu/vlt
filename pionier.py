@@ -18,6 +18,10 @@ elif dpr_id == "BETI":
 vlt.setDefaultProcess(pnoc)
 log("ok")
 
+
+####
+# Load the functional dictionaries
+#
 log("Reading Dictionaries ...", end=" ")
 if dpr_id == "PIONIER":
     log("ACS", end=" ")
@@ -28,21 +32,63 @@ elif dpr_id == "BETI":
     aos = readDictionary(dpr_id+"_AOS")
     acs = vlt.FunctionDict()
 
-
-log( "CFG",end=" ")
+log("CFG", end=" ")
 cfg = readDictionary(dpr_id+"_CFG")
-log( "DCS",end=" ")
+log("DCS", end=" ")
 dcs = readDictionary(dpr_id+"_DCS")
-log( "ICS",end=" ")
+log("ICS", end=" ")
 ics = readDictionary(dpr_id+"_ICS")
-log( "OS",end=" ")
-os  = readDictionary(dpr_id+"_OS")
-log( "DPR",end=" ")
+log("OS", end=" ")
+os = readDictionary(dpr_id+"_OS")
+log("DPR", end=" ")
 dpr = readDictionary("DPR")
-log( "OSB",end=" ")
-osb = readDictionary("DPR")
-log( " => allf")
+log("OSB", end=" ")
+osb = readDictionary("OSB")
+log(" => allf")
 allf = acs + aos + cfg + dcs + ics + os + dpr + osb
+
+####
+# Add the 4 shuters
+shuters = devices.Shuters([devices.Shuter(ics.restrict("INS.SHUT%d"%i),
+                                  statusKeys=[""]) for i in range(1, 5)])
+shut1, shut2, shut3, shut4 = shuters
+
+####
+# dispersion motor
+disp = devices.Motor(ics.restrict("INS.OPTI3"), statusKeys=[""])
+
+####
+# Detector
+# needs the DET. keywords plus some extras
+class PionierDetector(devices.Detector):
+    def statusUpdate(self, keylist=None, proc=None):
+        super(PionierDetector, self).statusUpdate()
+        if keylist is None:
+            keylist = self.statusKeys
+
+
+        if "SUBWINS" in keylist and self["SUBWINS"].hasValue():
+            subs_status = []
+            for i in range(1, self["SUBWINS"]+1):
+                subs_status.expend(
+                    self.restrict("SUBWIN%d"%i).msgs()
+                )
+            if len(subs_status):
+                self.statusUpdate(subs_status)
+
+
+
+
+det = PionierDetector(
+                       dcs.restrict("DET")+
+                       dpr+
+                       osb.restrict("OCS.DET")+
+                       ics.restrict([("INS.MODE", "MODE")]),
+                       statusKeys=["DIT","NDIT","POLAR","SUBWINS"]
+                       )
+
+
+
 
 
 

@@ -2381,15 +2381,16 @@ class FunctionDict(dict):
                 output[k] = Function(k,v)
         return self._copy_attr(output)
 
-    def statusUpdate(self, keylist=False, proc=None):
+    def statusUpdate(self, keylist=None, proc=None):
         """
         update the disctionary function values from the Process.
         statusUpdate return a Function dictionary containing all the updated Functions
+
         keylist= - A restrictive list of key or a string where keys are space separated
-                     by space
-                     - if keylist is False, the  status process is called without argument
-                     - if keylist is None, the status process is called with all the
-                       dictionary keys argument.
+          - if keylist is None, use the statusKeys attribute,
+                if also None the status process is called without argument
+          - if keylist is False  use all the dictionary keys!!
+
         proc= is the Process, if is None use the default one
         """
         vals = self.status(keylist, proc=proc, indict=True)
@@ -2790,7 +2791,7 @@ def parameterDictionary2functionDict( pdictionary):
 def readDictionary(dictFileSufix, path=None):
     import dictionary
     dfileName = dictionary.findDictionaryFile(dictFileSufix, path)
-    dfile = dictionary.Dictionary( dfileName)
+    dfile = dictionary.Dictionary(dfileName)
     dfile.parse()
     return parameterDictionary2functionDict( dfile.dictionary)
 

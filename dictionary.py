@@ -203,7 +203,8 @@ class Context(ParameterDictionary):
 
 class Dictionary(file):
     config = {}
-    dictionary = ParameterDictionary()
+    dictionary = None # will be set in init
+    #ParameterDictionary()
     dictionaryClass = {}
     dictionaryContext = {}
 
@@ -226,6 +227,10 @@ class Dictionary(file):
     A file descriptor for dictionary parsor
 
     """
+    def __init__(self, *args, **kwargs):
+        file.__init__(self, *args, **kwargs)
+        self.dictionary = ParameterDictionary()
+
     def parse(self, line=None, count = 0):
         if line is None:
             line = self.readline()
