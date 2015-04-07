@@ -1609,8 +1609,8 @@ class Function(object):
 
     def cmd(self, value=None, default=False, context=None):
         return cmd(map( lambda f: (f.getMsg(context=context),
-                                  f.formatValue(
-                                  f.getValue(  default=default) if value is None else value,
+                                  f.formatStripedValue(
+                                  f.getValue(default=default) if value is None else value,
                                   context=context
                                   )
                               ),
@@ -1766,7 +1766,8 @@ class Function(object):
         value = self.parseValue(value)
         return self._format(self.getFormat(0) , value)
 
-
+    def formatStripedValue(self, value, context=None):
+        return self.formatValue(value, context=context).strip()
 
 
     def setup(self, value=None, proc=None, **kwargs):
