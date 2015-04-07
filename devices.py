@@ -123,14 +123,12 @@ class Detector(Device):
                                  timeout=timeout
                                  )
 
-    def wait(self, expoId=None,  detId=None,  first=None,  all=None,
-             cond=None, header=None, detlist=None, mode=None, timeout=None):
+    def wait(self, timeout=None, **kwargs):
+        """ run the command wait
+        .proc.help("wait") for more info
+        """
         return self.getProc().msgSend("wait",
-                                 dict(expoId=expoId,  detId=detId,
-                                      irst=first, all=all, cond=cond,
-                                      header=header,
-                                      detlist=detlist,
-                                      mode=mode),
+                                 kwargs,
                                  timeout=timeout
                                  )
 
