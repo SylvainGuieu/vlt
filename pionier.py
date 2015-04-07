@@ -66,7 +66,6 @@ class PionierDetector(devices.Detector):
         if keylist is None:
             keylist = self.statusKeys
 
-
         if "SUBWINS" in keylist and self["SUBWINS"].hasValue():
             subs_status = []
             for i in range(1, self["SUBWINS"].getValue()+1):
@@ -84,8 +83,11 @@ det = PionierDetector(
                        dpr+
                        osb.restrict("OCS.DET")+
                        ics.restrict([("INS.MODE", "MODE")]),
-                       statusKeys=["DIT","NDIT","POLAR","SUBWINS"]
+                       statusKeys=["DIT", "NDIT", "POLAR", "SUBWINS"]
                        )
+##
+# To remove some keyword embiguities
+det["TYPE"] = det["DPR.TYPE"]
 
 
 

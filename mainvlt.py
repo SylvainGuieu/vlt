@@ -15,6 +15,8 @@ _defaultProcess = None
 LASTBUFFER = ""
 DEFAULT_TIMEOUT = None
 
+KEY_MATCH_CASE = False
+
 
 #################
 # Used in cdt process definition
@@ -454,7 +456,11 @@ class FunctionKeyi(object):
     def match(self, key, prefixOnly=False):
         if not isinstance(key, FunctionKeyi):
             key = matchKey(key)
-        if key.key != self.key: return False
+        if key.key != self.key:
+            if KEY_MATCH_CASE: return False
+            if key.key.upper() != self.key:
+                return False
+
         if key.index == None:
             " For an iterable KEY is equivalent to KEY0 "
             if self.index == None and isinstance(key, FunctionKey):
@@ -567,7 +573,12 @@ class FunctionKey(FunctionKeyi):
     def reIndex(self, dummy):
         raise IndexError("Not iterable key %s"%self)
     def match( self, key):
-        return self.reform()=="%s"%key #keep "%" to reform in case of FunctionKey instance
+        selfkey = self.reform()
+        key = "%s"%key #keep "%" to reform in case of FunctionKey instance
+        if KEY_MATCH_CASE:
+            return selfkey==key
+        else:
+            return selfkey==key or selfkey==key.upper()
     def hasIndex(self):
         return not (self.index is None)
 
@@ -695,6 +706,14 @@ class FunctionKeySlice(FunctionKeyi):
 
 def matchKey(key):
     return FunctionKeyi.matchNew(key) or FunctionKeyList.matchNew(key)  or FunctionKeySlice.matchNew(key) or FunctionKey.matchNew(key)
+
+def upperKey(key):
+    ukey = key.upper()
+    if key[-1] in ["i", "j", "k"]:
+        if key[0:-1] == ukey[0:-1]:
+            return key
+    return ukey
+
 
 
 class Function(object):
@@ -987,19 +1006,20 @@ class Function(object):
             nonsetup = len( self.onSetup)
         )
 
-    def __format__(self, format_spec):
+    def __format__(self, format_spec, context=None):
         if not len(format_spec):
-            format_spec = "s"
-        if format_spec[-1]=="s":
-            return format( self.getFormatedValue() , format_spec)
+            return format( self.getFormatedValue(context=context), format_spec)
+        #    format_spec = "s"
+        #if format_spec[-1]=="s":
+        #    return format( self.getFormatedValue() , format_spec)
 
         if format_spec[-1]=="m":
             return format( self.getMsg(), format_spec[0:-1]+"s")
 
         if format_spec[-1]=="c":
-            return format( cmd2str(self.cmd()), format_spec[0:-1]+"s")
+            return format( cmd2str(self.cmd(context=context)), format_spec[0:-1]+"s")
 
-        return format( self.getValue(), format_spec)
+        return format(self.getValue(context=context), format_spec)
 
     def copy(self,copyValue=False):
         """
@@ -1622,9 +1642,10 @@ class Function(object):
 
     def rebuildMsg( self, replacement=None, fromAttr=True):
         """
-        msg = opt.rebuildVal(replacement)
+        msg = opt.rebuildMsg(replacement)
 
-        if the message of the opt object is a string of the form "INS.OPT{optnumber}_" look for "optnumber" inside the replacement dict
+        if the message of the opt object is a string of the form "INS.OPT{optnumber}_"
+        look for "optnumber" inside the replacement dict
         and replace {optnumber} by its value.
         Also the replacement patern can contain a format separated by a ',' : e.g.  "INS.OPT{optnumber,%04d}"
         Return the value of opt if it is not a string
@@ -1667,31 +1688,65 @@ class Function(object):
         return strin
 
 
-    def rebuildVal( self, fdict, default=False, default_replacement=True):
+    def rebuildVal( self, context, default=False):
         """
-        val = opt.rebuildVal(fdict, default=False, default_replacement=True)
+        val = f.rebuildVal(context, default=False)
 
-        if the value of the opt object is a string of the form "TEST_{somekey}_" look for "somekey" inside fdict and
-        replace {somekey} by its value. fdict can also be a dictionary of opt's objects
-        Also the replacement patern can contain a format separated by a ',' : e.g.  "TEST_{somekey,%04d}"
+        if the value of the Function object is a string of the form
+        "TEST_{somekey}_" look for "somekey" inside context and replace
+        {somekey} by its value.
 
-        Return the value of opt if it is not a string
+
+
+        Return the value of the Function object  if it is not a string
 
         """
-        return self._rebuildVal( self.get(default), fdict, default_replacement=default_replacement)
+        return self._rebuildVal( self.get(default), context)
+
+    @staticmethod
+    def _rebuildVal(strin, context):
+        if not issubclass(type(strin), str):
+            return strin
+        strout = ""
+        for before, field, fmt, q in strin._formatter_parser():
+            strout += before
+            if field is None:
+                continue
+            field, others = field._formatter_field_name_split()
+
+            for tp, name  in others:
+                if tp:
+                    field += ".%s" % name
+                else:
+                    break
+            obj = context[field]
+
+            for tp, name in others:
+                if tp:
+                    obj = getattr(obj, name)
+                else:
+                    obj = obj[name]
+
+
+
+            if isinstance(obj, Function):
+                strout += obj.__format__(fmt, context=context)
+            else:
+                strout += obj.__format__(fmt)
+
+        return strout
 
     _matchekeys_re = re.compile(r'[{]([^}]+)[}]')
-
     @classmethod
-    def _rebuildVal( cls, strin, fdict, default_replacement=True):
+    def _old_rebuildVal(cls, strin, fdict, default_replacement=True):
 
-        if not issubclass( type(strin), str):
+        if not issubclass(type(strin), str):
             return strin
 
         matches = cls._matchekeys_re.findall(strin)
         for key in matches:
             m = re.compile("[{]"+key+"[}]")
-            f = m.search( strin)
+            f = m.search(strin)
             if f is not None: # shoudl not be
                 start = strin[0:f.start()]
                 end   = strin[f.end():None]
@@ -1699,7 +1754,7 @@ class Function(object):
                 sp = key.split(":")
                 if len(sp)>1:
                     if len(sp)>2:
-                        raise Exception("Error to reformat '%s' must contains only one pair of name,format")
+                        raise Exception("Error to reformat '%s' must contains only one pair of name,format"%sp)
                     fmt = "{:"+sp[1]+"}"
                     key = sp[0]
                 else:
@@ -1823,6 +1878,9 @@ class Function(object):
             return fmt(value)
 
 
+
+
+
 def getItemShape(items):
      return [ len(i) if hasattr(i,"__len__") and hasattr(i,"__iter__") else 0 for i in items ]
 
@@ -1850,50 +1908,6 @@ def itemExplode(items):
      return out
 
 
-
-
-
-
-
-def findOrder(fdict, default=True, keys=None):
-    # return a key list of fdict orderer to rebuild the values
-    # for instance if  imgname="INSTRUMENT_{type}", type="{polar}",  polar=7000
-    # the order will be "polar", "type", "imgname"
-    # because type has to be rebuilt before polar
-    def getValOrNone(o,k):
-        if (not k in o)  or (not o[k].hasValue()): return None
-        return o[k].get(default=default)
-
-
-    if issubclass(type(fdict), (FunctionDict, System)):
-        get  = getValOrNone
-    else:
-        get = lambda o,k:o.get(k,None)
-
-    keys = fdict.keys() if keys is None else keys
-
-    # return a score for each keys the highest should be executed at the end
-    counts = [ _findOrderwalker(k, keys, fdict, get=get) for k in keys ]
-    #print zip(keys, counts)
-
-    return [keys[i] for i in sorted(range(len(counts)), key=counts.__getitem__)]
-
-def _findOrderwalker(k, keys, fdict, get=lambda o,k:o[k]):
-    count = 1
-    if not k in fdict:
-        return count
-        raise Exception("keywork '%s' is not in the list"%k)
-
-    strin = get(fdict,k)
-    if issubclass( type(strin), str):
-        matches  = Function._matchekeys_re.findall(strin)
-        for m in matches:
-            m = m.split(":")[0]
-            if fdict[m] is fdict[k]:
-                raise Exception("in '%s' key '%s' refer to itself"%(strin,m))
-            count += _findOrderwalker(m, keys, fdict, get=get)
-    return count
-
 class FunctionIter:
     def __init__(self, function):
         self.function = function
@@ -1905,6 +1919,7 @@ class FunctionIter:
         if self.counter >= self.size:
             raise StopIteration("out of range")
         return self.function[self.indexes[self.counter]]
+
 
 
 def remove_dict_prefix(din, prefix, err=False):
@@ -1975,15 +1990,21 @@ class FunctionDict(dict):
 
     def __getitem__(self,item):
 
-        if issubclass( type(item), tuple):
+        if issubclass(type(item), tuple):
             if len(item)>2:
                 raise IndexError("axcept no more than two items, second item should be a string")
 
             if len(item)>1:
-                out =  self[item[0]][item[1]]
+                attr_key = [item[1]]
             else:
                 # case of  f[key,] by default this is "value"
-                out =  self[item[0]]["value"]
+                attr_key =  "value"
+            attr = "get"+attr_key.capitalize()
+            out = self[item[0]]
+            if not hasattr(out, attr):
+                raise AttributeError("method %s does not exists for obj of class"%(attr, out.__class__))
+            out = getattr(out, attr)
+
             if isinstance(out, dict) and self._prefix:
                 out.setPrefix(self._prefix)
             if isinstance( out, FunctionDict):
@@ -1998,14 +2019,14 @@ class FunctionDict(dict):
 
     def __setitem__(self,item, val):
         """ d[item] = val
-            see method .set for more help
+            see method .setitem for more help
         """
         # setitem understand what to do function to the value
         # if value is a self._child_object it will be set like on a dictionary
         # else try to set the value inside the _child_object, if that case if the key does not
         # exists raise a KeyError
 
-        if issubclass( type(item), tuple):
+        if issubclass(type(item), tuple):
             if len(item)>2:
                 raise IndexError("axcept no more than to items, second item should be a string")
 
@@ -2017,12 +2038,14 @@ class FunctionDict(dict):
                 self[item[0]]["value"] = val
                 return None
 
-        return self.set( item, val)
+        return self.setitem(item, val)
 
 
     def __contains__(self,item):
         if super(FunctionDict, self).__contains__(item):
             return True
+
+
         keys = FunctionMsg(dotkey(item))
         for f in self.itervalues():
             if f.match(keys):
@@ -2230,9 +2253,9 @@ class FunctionDict(dict):
                 raise TypeError("argument should be tuple or Function, got %s" % arg)
             super(FunctionDict, self).__setitem__(arg.getMsg(), arg)
 
-    def set(self, item, val):
+    def setitem(self, item, val):
         """
-        set(item, opt_or_value)
+        setitem(item, opt_or_value)
         set a item in the FunctionDict,
         The first argument is a key string the second a value to set
 
@@ -2243,11 +2266,11 @@ class FunctionDict(dict):
         If the key does not exists, it accept only a Function object or a tuple
         (key,val) wich will be converted to a Function
 
-        d.set(key,val) is iddentical to d[key] = val
+        d.setitem(key,val) is iddentical to d[key] = val
 
 
         However one can set a value in the item only if the item already exists
-        optdict.set(item, opt) is strictely equivalent to optdict[item] = opt
+        optdict.setitem(item, opt) is strictely equivalent to optdict[item] = opt
 
         e.g. :
            d = FunctionDict( dit=Function("DET.DIT", float) )
@@ -2259,8 +2282,12 @@ class FunctionDict(dict):
            d['dummy']    = Function("DET.DUMMY", int)  #will work
 
         """
-        if isinstance( val, tuple):
+        if isinstance(val, tuple):
             val = Function.newFromCmd(val)
+
+        if not KEY_MATCH_CASE:
+            item = upperKey(item)
+
 
         if issubclass(type(val), self._child_object):
             if self.noDuplicate:
@@ -2290,7 +2317,7 @@ class FunctionDict(dict):
         """
         return self.getIterableKeyLike(key)[0] in self
 
-    def update( self, *args, **kwargs):
+    def update(self, *args, **kwargs):
         if len(args)>1:
             raise ValueError("update accept only one optional positional argument")
 
@@ -2302,12 +2329,20 @@ class FunctionDict(dict):
         for k,a in kwargs.iteritems():
             self[k] = a
 
+    def set(self, *args, **kwargs):
+        self.update(*args, **kwargs)
+        return self
+
     def get(self, item, default=None):
         if default is not None and not issubclass(type(default), self._child_object):
             raise ValueError( "default should be None or a %s object "%self._child_object)
 
         if super(FunctionDict, self).__contains__(item):
             return super(FunctionDict, self).get(item, default)
+        if not KEY_MATCH_CASE:
+            uitem = upperKey(item)
+            if super(FunctionDict, self).__contains__(uitem):
+                return super(FunctionDict, self).get(uitem, default)
 
         fout = None
         for f in self.values():
@@ -2506,8 +2541,8 @@ class FunctionDict(dict):
         context (=None)  : The context keyword is a FunctionDict, System, Device or
              a dict (key/value pair)object. It is used to replace bracketed
              string value to the coresponding value found in context.
-             For instance "{type}" will be replaced by the value of "type" if present in
-             the context. Also the bracketed key replacement can be formated : "{nexpo:03d}",
+             For instance "{type}" will be replaced by the value context["type"].
+             Also the bracketed key replacement can be formated : "{nexpo:03d}",
              it will overwrite the default format of "nexpo"
              If context is None (default) it will use the own functionDict as context so:
              fd.tocmd(context=fd) is equivalent to fd.tocmd()
@@ -2534,7 +2569,12 @@ class FunctionDict(dict):
         """
         values = values or {}
         if context is None:
-            context = self.copy(True) #deepcopy is necessary
+            # make a deep copy and set the new values in context
+            context = self.copy(True)
+            for k,f in values.iteritems():
+                context[k] = f
+        elif context is False:
+            context = None
 
         if withvalue:
             keys = list(set([k for k,f in self.iteritems() if f.hasValue(default)]+
@@ -2542,28 +2582,6 @@ class FunctionDict(dict):
                         ))
         else:
             keys = [k for k in values]
-
-        if context is not False: #at this point can be false
-            if isinstance(context, (System,Device)):
-                if isinstance( context.functions, FunctionDict):
-                    context = context.functions.copy(True)
-                else:
-                    context = FunctionDict(context.functions.copy(True))
-
-
-            keys = findOrder(context, default=contextdefault, keys=keys)
-
-            for k  in keys:
-                if k in values:
-                    context[k] = values[k]
-
-            if isinstance( context, FunctionDict):
-                for k in keys:
-                    context[k].setValue(self[k].getValue(value=values.get(k,None),
-                                                         default=default, context=context))
-            else:
-                context[k] = self[k].getValue(value=values.get(k,None),
-                                              default=default, context=context)
 
         out = []
         for k in keys:
@@ -2573,14 +2591,7 @@ class FunctionDict(dict):
 
     def qcmd(self, _values_=None, **kwargs):
         values = _values_ or {}
-        for k,v in kwargs.iteritems():
-            # try with the lower case
-            if k in self:
-                values[k] = v
-            # if not find set with upper case and
-            # leave the error for setup
-            else:
-                values[k.upper()] = v
+        values.update(kwargs)
         return self.cmd(values, False)
 
     def setup(self, values=None, withvalue=True, default=False, context=None,
