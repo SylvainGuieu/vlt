@@ -28,7 +28,9 @@ class Detector(Device):
                                  timeout=timeout
                                  )
 
-    def takeExposure(self, _kwargs_=None, expoId=0, timeout=None,
+    def takeExposure(self, _kwargs_=None,
+                     _include_= ["MODE", "IMGNAME"],
+                     expoId=0, timeout=None,
                      **morekw):
         """
         takeExposure({"KEY1":val1}, KEY2=val2, expoId=0, timeout=1000 )
