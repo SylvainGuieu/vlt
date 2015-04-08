@@ -611,7 +611,8 @@ class FunctionDict(dict):
         return {k:self[k].get(default=default) for k in set( self.keys()+self.msgs(context=context))}
 
 
-    def tocmd( self, values=None, withvalue=True, default=False,
+    def tocmd( self, values=None, withvalue=True, include=None,
+              default=False,
               context=None, contextdefault=True):
         """
         get a list of command with key/value pairs ready to be passed to
@@ -681,16 +682,25 @@ class FunctionDict(dict):
                 if f.hasValue(default):
                     if not f in funcs:
                         out.extend(f.cmd(default=default,context=context))
+                        funcs.append(f)
+        if include:
+            for k in include:
+                f = self[k]
+                if not f in funcs:
+                    if not f.hasValue():
+                        raise ValueError("Key '%s' is mandatory but do not have value set" % f.getMsg())
+                    out.extend(f.cmd(default=default, context=context))
 
         return out
     cmd = tocmd
 
-    def qcmd(self, _values_=None, **kwargs):
+    def qcmd(self, _values_=None, _include_=None, **kwargs):
         values = _values_ or {}
         values.update(kwargs)
-        return self.cmd(values, False)
+        return self.cmd(values, False, include=_include_)
 
-    def setup(self, values=None, withvalue=True, default=False, context=None,
+    def setup(self, values=None, include=None,
+              withvalue=True, default=False, context=None,
               contextdefault=True, proc=None, **kwargs):
         """
         Send a Setup from all the function with a value (or default set if default=True)
@@ -723,6 +733,7 @@ class FunctionDict(dict):
 
         """
         cmdfunc = self.tocmd(values=values, withvalue=withvalue,
+                             include=include,
                              default=default, context=context,
                              contextdefault=contextdefault)
 
@@ -733,7 +744,7 @@ class FunctionDict(dict):
         self.onSetup.run(self)
         return out
 
-    def qsetup(self, _values_=None, **kwargs):
+    def qsetup(self, _values_=None, _include_=None, **kwargs):
         """ qsetup stand for quick setup
 
         qsetup( dit=0.01, ndit = 1000, expoId=0, timeout=1000)
@@ -762,7 +773,7 @@ class FunctionDict(dict):
         pkeys = proc.commands["setup"].options.keys()+["timeout"]
         pkwargs = {k:kwargs.pop(k) for k in kwargs.keys() if k in pkeys}
 
-        cmdfunc = self.qcmd(_values_, **kwargs)+pkwargs.pop("function",[])
+        cmdfunc = self.qcmd(_values_, _include_=_include_, **kwargs)+pkwargs.pop("function",[])
 
         out = self.getProc(proc).setup(function=cmdfunc, **pkwargs)
 
