@@ -1,6 +1,11 @@
 import mainvlt as vlt
 from .mainvlt import *
+from .function import Function
+from .functiondict import FunctionDict, functionlist
+from .sequence import sequence, sequences
+
 from . import devices
+
 
 #import processes as proc
 import glob

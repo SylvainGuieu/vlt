@@ -1,6 +1,10 @@
 import re
 import os
 from .config import config
+from .function import  Function
+from .functiondict import FunctionDict
+from .mainvlt import cmd
+
 cdtpath = config["cdtpath"]
 cdtpydir = config["cdtpydir"]
 
@@ -8,6 +12,11 @@ debug = config["cdtdebug"]
 
 indentStr = "    "  # python indent string. Do not change that
 modulePref = "vlt."  # The prefix for vlt module, used to call vlt functions
+
+
+cdtModulePref = "cdt."  # The prefix for this module, used to call vlt functions
+
+
 vltModuleName = "vlt"  # Should be the same than modulePref minus the '.'
 cdtModuleName = "cdt"  # this is this module
 
@@ -22,13 +31,74 @@ buffreadClassName = "buffreader"
 # Add the functions string name in this directory
 typeExeption = {
     "": {  # default ones
-        "function": modulePref+"dtypeFunctionList",
-        "params": modulePref+"dtypeFunctionList"
+        "function": cdtModulePref+"dtypeFunctionList",
+        "params": cdtModulePref+"dtypeFunctionList"
         },
     "status": {  # specific to command status
-        "function": modulePref+"dtypeFunctionListMsg"
+        "function": cdtModulePref+"dtypeFunctionListMsg"
     }
 }
+
+def msg_send_decorator(msg, commands):
+    def tmp(self, timeout=None, **kwargs):
+        return self.msgSend(msg, kwargs, timeout=timeout)
+    tmp.__doc__ = form_cmd_help(msg,commands[msg])
+    return tmp
+
+
+def form_cmd_help(msg,command):
+    return msg+"("+" ,".join(k+"=%s"%o.dtype for k,o in command.options.iteritems())+")\n\n"+command.helpText
+
+
+def dtypeFunctionList(function):
+    """
+    write a command line based on an array of tuple :
+      [("cmd1","opt1"),("cmd2","opt2"), ...]
+    or an array of string ["cmd1 opt1", "cmd2 opt2", ...]
+    e.g:
+       dtypeFunctionList ( [("cmd1","opt1"),("cmd2","opt2"), ...])
+       will return "cmd1 opt1 cmd2 opt2 ..."
+    This function is used for instance in message send command
+
+    if the unique argument is a str, it is returned as it is.
+    argument can also be a FunctionDict or a System object, in this case
+    the command for all functions with a values set is returned.
+    """
+    if issubclass(type(function), str):
+        return function
+    if issubclass(type(function), (FunctionDict,)):
+        return "{}".format(function)
+    if issubclass(type(function), Function):
+        return dtypeFunctionList(function.cmd())
+
+    function = cmd(function) #to make sure it is a flat list
+    out = []
+    for func in function:
+        if issubclass( type(func), tuple):
+            if len(func)!=2:
+                raise TypeError("Expecting only tuble of dim 2 in setup list")
+            if isinstance( func[1], str):
+                fs = func[1].strip()
+                if fs.find(" ")>-1:
+                    out.append("%s '%s'"%(func[0],fs))
+                else:
+                    out.append("%s %s"%(func[0],fs))
+            else:
+                out.append("%s %s"%func)
+        else:
+            out.append("%s"%(func))
+    return " ".join(out)
+
+
+def dtypeFunctionListMsg(function):
+    if issubclass( type(function), str) :
+        return function
+    if issubclass( type(function), (FunctionDict)):
+        return " ".join( [f.getMsg() for f in function] )
+    if issubclass( type(function), (Function)):
+        return function.getMsg()
+    return " ".join(function)
+
 
 
 class Cdt(file):
@@ -449,19 +519,20 @@ def _wrf(nm, p):
 
 _dict2py_str = """
 import {vltModuleName}
+import {cdtModuleName}
 class {className}({derived}):
 {idt}\"\"\"
 {classComment}
 {idt}\"\"\"
 {idt}import {vltModuleName}
-
+{idt}import {cdtModuleName}
 {idt}import {vltModuleName}.{buffreadModuleName} as {buffreadModuleName}
 {idt}{buffreadClassName} = {buffreadModuleName}.{buffreadClassName}
 
 {idt}commands = {dictpycmd}
 {idt}msg = "{className}"
 
-{idt}for c in commands: exec("%s = vlt.msg_send_decorator('%s',commands)"%(c,c))
+{idt}for c in commands: exec("%s = {cdtModulePref}msg_send_decorator('%s',commands)"%(c,c))
 
 cls  = {className}
 """

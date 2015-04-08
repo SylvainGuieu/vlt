@@ -3,6 +3,8 @@ import re
 import mainvlt
 import os
 from .config import config
+from .functiondict import FunctionDict
+from .function import Function
 # valid default parameters types
 
 def vltbool(val):
@@ -275,14 +277,27 @@ class Dictionary(file):
         self.curentParameter = None
         self.curentParameterName = ""
 
+    def to_functionDict(self):
+        return parameterDictionary2functionDict(self.dictionary)
 
 def parameter2function(param):
-    return mainvlt.Function( param['name'], param['type'], format=param.get("format", "%s"),
-                         default=None, value=None, index=None,
-                         comment=param.get("comment", "%s"), description=param.get("description", ""), unit=param.get("unit", ""), context=param.get("context", ""), cls=param.get("class", "").split("|"))
+    if param['type'] is bool:
+        param["format"] = mainvlt.formatBoolFunction
+        param['type'] = mainvlt.vltbool
+
+    return Function(param['name'],
+                    dtype=param['type'],
+                    format=param.get("format", "%s"),
+                    default=None, value=None, index=None,
+                    comment=param.get("comment", "%s"),
+                    description=param.get("description", ""),
+                    unit=param.get("unit", ""),
+                    context=param.get("context", ""),
+                    cls=param.get("class", "").split("|"))
 
 def parameterDictionary2functionDict( pdictionary):
-    out = mainvlt.FunctionDict()
+
+    out = FunctionDict()
     for k,p in pdictionary.iteritems():
         out[k] = parameter2function(p)
     return out

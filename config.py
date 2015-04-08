@@ -54,8 +54,11 @@ config = {
 
     # list of directories containing the dictionary files
     "dictionarypath": env_path("INS_ROOT", "SYSTEM/Dictionary")+
-                      env_path("VLTROOT", "config")
-
+                      env_path("VLTROOT", "config"),
+    # if key_match_case is true, the Function anf FunctionDict objects
+    # becomes case sensitive meaning that, e.g, dcs["DIT"] != dcs["dit"]
+    # default is false
+    "key_match_case": False
 }
 
 # debug local configuration

@@ -49,9 +49,9 @@ allf = acs + aos + cfg + dcs + ics + os + dpr + osb
 
 ####
 # Add the 4 shuters
-shuters = devices.Shuters([devices.Shuter(ics.restrict("INS.SHUT%d"%i),
+shutters = devices.Shutters([devices.Shutter(ics.restrict("INS.SHUT%d"%i),
                                   statusKeys=[""]) for i in range(1, 5)])
-shut1, shut2, shut3, shut4 = shuters
+shut1, shut2, shut3, shut4 = shutters
 
 ####
 # dispersion motor
@@ -88,6 +88,8 @@ det = PionierDetector(
 ##
 # To remove some keyword embiguities
 det["TYPE"] = det["DPR.TYPE"]
+# set the default mode to ENGINEERING
+det["mode"] = "ENGINEERING"
 
 
 
