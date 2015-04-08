@@ -41,7 +41,7 @@ class Detector(Device):
         kwargs = _kwargs_ or {}
         kwargs.update(morekw)
         if len(kwargs):
-            expoId = self.qsetup(kwargs,
+            expoId = self.qsetup(kwargs,_include_=_include_,
                                 expoId=expoId, timeout=timeout)
         self.start(expoId=expoId)
         self.wait(expoId=expoId)
