@@ -1,6 +1,6 @@
 #!/usr/bin/python
 import os
-import commands
+
 import re
 
 from .config import config

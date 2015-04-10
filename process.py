@@ -1,5 +1,6 @@
-from .mainvlt import Option
+from .mainvlt import Option, VLTError
 from .config  import config
+import commands
 
 msgSend_cmd = config.get("msgSend_cmd", "msgSend")
 
