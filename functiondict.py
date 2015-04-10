@@ -1,11 +1,10 @@
 import re
-from .mainvlt import dotkey, undotkey
-from .function import Function, upperKey, FunctionMsg, getProc
+from .mainvlt import dotkey, undotkey, EmbigousKey
+from .function import Function, upperKey, FunctionMsg
+from .process import getProc
 from .action import Actions
 from .config import config
 KEY_MATCH_CASE = config.get("key_match_case", False)
-
-
 
 
 

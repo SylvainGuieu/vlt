@@ -15,31 +15,11 @@ _defaultProcess = None
 LASTBUFFER = ""
 DEFAULT_TIMEOUT = None
 
-KEY_MATCH_CASE = False
 
 
 ############################################################
 # Some functions which are used as dtype or format
 ############################################################
-
-def setDefaultProcess(proc):
-    """ set the default process for the vlt module """
-    global _defaultProcess
-    if not isinstance(proc, Process):
-        raise ValueError("Expecting a Process got %s"%type(proc))
-    _defaultProcess = proc
-
-
-def getDefaultProcess():
-    """ return the default process of the vlt module """
-    global _defaultProcess
-    if _defaultProcess is None:
-        raise Exception("There is no default process define, use setDefaultProcess to set")
-    return _defaultProcess
-
-
-def getProc(proc=None):
-    return proc if proc is not None else getDefaultProcess()
 
 
 def formatBoolFunction(value):
@@ -69,7 +49,7 @@ class Option(object):
     for instantce in:
         msgSend "" pnoControl SETUP "-function DET.DIT 0.005 DET.NDIT 1000 -expoId 0"
 
-    'function' and 'expoId' are Option
+    '-function' and '-expoId' are Option
 
     p = Option(msg, dtype)
     """
@@ -139,20 +119,11 @@ class Option(object):
             return self.format(value)
 
 
-class FunctionIter:
-    def __init__(self, function):
-        self.function = function
-        self.indexes = function._getAllIndexes()
-        self.counter = -1
-        self.size = len( self.indexes)
-    def next(self):
-        self.counter += 1
-        if self.counter >= self.size:
-            raise StopIteration("out of range")
-        return self.function[self.indexes[self.counter]]
-
-
 class EmbigousKey(KeyError):
+    pass
+
+
+class VLTError(Exception):
     pass
 
 
@@ -172,200 +143,8 @@ def undotkey(key):
     return ".".join( key.split(" ") )
 
 
-class Param(Option):
-    """
-    Samething than Option except that if the value is None,
-    an empty string is return from the function cmd()
-    """
-    def cmd(self,value):
-        if value is None:
-            return ""
-        return "%s %s"%(self.msg, self.formatValue(value))
-
-class Command(object):
-    options  = {}
-    helpText = ""
-    _debugBuffer = None
-    def __init__(self, msg, options, helpText="", bufferReader=None):
-        self.msg = msg
-        self.options = options
-        self.helpText = helpText
-        self.bufferReader = bufferReader
-
-    def cmd(self, kwargs):
-        for k,opt in self.options.iteritems():
-            kwargs.setdefault(k, opt.default)
-        cmds = []
-        for k,value in kwargs.iteritems():
-            if not k in self.options:
-                raise KeyError("The option '%s' is unknown for command %s"%(k,self.msg))
-            ## ignore the value None
-            opt    = self.options[k]
-            cmdstr = opt.cmd(value)
-            if cmdstr.strip():
-                cmds.append(cmdstr)
-        return """%s \"%s\""""%(self.msg, " ".join(cmds))
-
-    def readBuffer(self, buff):
-        if self.bufferReader is None:
-            return buff
-        return self.bufferReader(buff)
-    def getDebugBuffer(self):
-        return self._debugBuffer
-    def setDebugBuffer(self, buf):
-        self._debugBuffer= buf
-
-    def status(self):
-        return self.proc.status()
-
-
-def processClass(processname, path=None):
-    """
-    Return the dynamicaly created python class of a process
-
-    The program look for the file processname.cdt into the list of path
-    directories wich can be set by the path= keyword.
-    By default config["cdtpath"] is used
-    """
-    import cdt
-    fileName = cdt.findCdtFile(processname+".cdt", path)
-    pycode = cdt.Cdt(fileName).parse2pycode()
-
-    exec pycode
-    # the pycode should contain the variable proc
-    # witch is the newly created object
-    return cls
-
-
-def openProcess(processname, path=None):
-    """
-    return processClass(processname, path)()
-
-    e.g.:
-      pnoc = openProcess("pnoControl")
-      pnoc.setup( function="INS.MODE ENGENIERING DET.DIT 0.01" )
-
-    """
-    return processClass(processname, path)()
-
-    # pyfile = cdt.Cdt(fileName).parse2pyfile()
-    #
-    # mod = __import__("vlt.processes."+processname,
-    #                  fromlist=[processname])
-    # reload(mod) #in case cdt changed
-    # return mod.proc
-
-
 def vltbool(val):
     return bool( val!='F' and val!=False and val)
-
-
-def readDictionary(dictFileSufix, path=None):
-    import dictionary
-
-
-    dfileName = dictionary.findDictionaryFile(dictFileSufix, path)
-    dfile = dictionary.Dictionary(dfileName)
-    dfile.parse()
-    return dfile.to_functionDict()
-
-class VLTError(Exception):
-    pass
-
-class Process(object):
-    commands = {}
-    _debug   = debug
-    _debugBuffer = None
-    _verbose = verbose
-    msg = ""
-
-    def __init__(self, msg=None, commands=None, doubleQuote=False):
-        commands = commands or {}
-
-        for k,cmd in commands.iteritems():
-            if not issubclass(type(cmd), Command):
-                raise TypeError("expecting a Command object got %s for key '%s'"%(type(cmd), k))
-            self.commands[k] = cmd
-
-        if msg is not None:
-            self.msg = msg
-        self.doubleQuote = doubleQuote
-        self.msgSend_cmd = msgSend_cmd
-    def setVerbose(self, val):
-        self._verbose = int(verbose)
-    def setDebug(self,value):
-        self._debug = bool(value)
-
-    def getDebug(self):
-        return self._debug
-    def getVerbose(self):
-        return self._verbose
-
-    def cmd(self, command, options=None, timeout=DEFAULT_TIMEOUT):
-        options = options or {}
-        if not command in self.commands:
-            raise KeyError("command '%s' does not exists for this process"%(command))
-        cmd = self.commands[command]
-        return _timeout_( "%s %s"%(self.msg, cmd.cmd(options)), timeout)
-
-    def cmdMsgSend(self, command, options=None, timeout=DEFAULT_TIMEOUT):
-        options = options or {}
-        return _timeout_("""%s "" %s"""%(self.msgSend_cmd, self.cmd(command,options)), timeout)
-
-    def msgSend(self, command, options=None, timeout=DEFAULT_TIMEOUT):
-        global LASTBUFFER
-        options = options or {}
-        cmdLine = self.cmdMsgSend(command, options, timeout=timeout)
-        if self.getVerbose():
-            print cmdLine
-
-        if self.getDebug():
-
-            buf = self.commands[command].getDebugBuffer() or "MESSAGEBUFFER:\n"
-            objout = self.commands[command].readBuffer(buf)
-            LASTBUFFER = "DEBUG: %s"%(cmdLine)
-            return objout
-
-        status, output = commands.getstatusoutput(cmdLine)
-        if status:
-            raise VLTError("msgSend reseived error %d"%status)
-
-        LASTBUFFER = output
-        objOutput = self.commands[command].readBuffer(output)
-        return objOutput
-
-
-    def help(self,command=None):
-        if command is None:
-            for c in self.commands:
-                self.help(c)
-            return
-
-        if not command in self.commands:
-            raise KeyError("command '%s' does not exists for this process"%(command))
-        opts = ", ".join( "{}={}".format(k,o.dtype) for k,o in self.commands[command].options.iteritems())
-        print "-"*60
-        print "{}({})".format(command, opts)
-        print self.commands[command].helpText
-    def getCommandList(self):
-        return self.commands.keys()
-
-def _timeout_(cmd, timeout):
-    """
-    just return the command cmd with the timeout attahced if any
-    """
-    if timeout:
-        return "%s %d"%(cmd,timeout)
-    return cmd
-
-
-
-
-class SendCommand(Process):
-    msg_cmd = "pndcomSendCommand"
-    def cmdMsgSend(self, command, options=None, timeout=None):
-        options = options or {}
-        return """%s %s"""%(self.msg_cmd, self.cmd(command,options))
 
 
 class Cmd(list):
@@ -394,6 +173,7 @@ def cmd(st):
     #this is always a flat list
     return Cmd([st])
 
+
 def cmd2str(tcmd):
     tcmd = cmd(tcmd) # make a flat list
 
@@ -403,6 +183,7 @@ def cmd2str(tcmd):
             v = "'{}'".format(v)
         out.append( "{} {}".format(c,v))
     return " ".join(out)
+
 
 def cmds(*args):
     output = []
@@ -524,15 +305,6 @@ class System(object):
         kwargs = kwargs or {}
         return self.proc.msgSend("setup", dict(function=self.cmd(kwargs), expoId=expoId), timeout= timeout)
 
-
-
-class Instrument(Process):
-
-    def __init__(self, init=True):
-        self._init_dictionaries
-
-    def _init_dictionaries(self):
-        pass
 
 
 

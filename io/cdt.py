@@ -1,9 +1,9 @@
 import re
 import os
-from .config import config
-from .function import  Function
-from .functiondict import FunctionDict
-from .mainvlt import cmd
+from ..config import config
+from ..function import  Function
+from ..functiondict import FunctionDict
+from ..mainvlt import cmd
 
 cdtpath = config["cdtpath"]
 cdtpydir = config["cdtpydir"]
@@ -11,18 +11,22 @@ cdtpydir = config["cdtpydir"]
 debug = config["cdtdebug"]
 
 indentStr = "    "  # python indent string. Do not change that
-modulePref = "vlt."  # The prefix for vlt module, used to call vlt functions
 
 
+
+
+
+
+vltModuleImport = """from vlt.process import Process, Param, Command;from vlt.mainvlt import formatBoolCommand"""
+vltModulePref   = ""  # The prefix for vlt module, used to call vlt functions
+
+cdtModuleImport = "from vlt.io import cdt"
 cdtModulePref = "cdt."  # The prefix for this module, used to call vlt functions
 
-
-vltModuleName = "vlt"  # Should be the same than modulePref minus the '.'
-cdtModuleName = "cdt"  # this is this module
-
 # submodule and class name for buffer reader
-buffreadModuleName = "buffread"
+buffreadModuleImport = "from vlt.buffread import buffreader"
 buffreadClassName = "buffreader"
+
 
 # Some parameters need special treatment before returned to msgSend
 # like function
@@ -175,7 +179,7 @@ class Cdt(file):
         return self.commands
 
     def parse2pycode(self, className=None, classComment=None,
-                     derived="vlt.Process"):
+                     derived=vltModulePref+"Process"):
         """
         parse the file and return a python code containing the class
         definition.
@@ -196,7 +200,7 @@ class Cdt(file):
         return self.pycode(className=className, derived=derived,
                            classComment=classComment)
 
-    def pycode(self, className=None, classComment=None, derived="vlt.Process"):
+    def pycode(self, className=None, classComment=None, derived=vltModulePref+"Process"):
         """
         return the python code definition of this file.
         The file MUST have been parsed first.
@@ -218,7 +222,7 @@ class Cdt(file):
                        classComment=classComment, fileName=self.name)
 
     def write_pyfile(self, filePath=None, className=None,
-                     derived="vlt.Process",
+                     derived=vltModulePref+"Process",
                      classComment=None, overWrite=True):
         """ write the python code of the curent Cdt file.
         The file MUST have been parsed first: f.parse()
@@ -255,7 +259,7 @@ class Cdt(file):
         return filePath
 
     def parse2pyfile(self,  filePath=None, className=None,
-                     derived="vlt.Process", classComment=None, overWrite=True):
+                     derived=vltModulePref+"Process", classComment=None, overWrite=True):
         """
         parse the file and write the process class definition to
         a python file.
@@ -485,6 +489,36 @@ def findCdtFile(file_name, path=None):
     raise ValueError("cannot find file {0} in any of the path: {1}".format(file_name, path))
 
 
+def processClass(processname, path=None):
+    """
+    Return the dynamicaly created python class of a process
+
+    The program look for the file processname.cdt into the list of path
+    directories wich can be set by the path= keyword.
+    By default config["cdtpath"] is used
+    """
+
+    fileName = findCdtFile(processname+".cdt", path)
+    pycode = Cdt(fileName).parse2pycode()
+
+    exec pycode
+    # the pycode should contain the variable proc
+    # witch is the newly created object
+    return cls
+
+
+def openProcess(processname, path=None):
+    """
+    return processClass(processname, path)()
+
+    e.g.:
+      pnoc = openProcess("pnoControl")
+      pnoc.setup( function="INS.MODE ENGENIERING DET.DIT 0.01" )
+
+    """
+    return processClass(processname, path)()
+
+
 _cmd2ClassDef_str = """
 {idt}def {name}(self, **kwargs):
 {idt}{idt}return self.msgSend('{name}', kwargs)
@@ -518,16 +552,15 @@ def _wrf(nm, p):
 
 
 _dict2py_str = """
-import {vltModuleName}
-import {cdtModuleName}
+{vltModuleImport}
+{cdtModuleImport}
 class {className}({derived}):
 {idt}\"\"\"
 {classComment}
 {idt}\"\"\"
-{idt}import {vltModuleName}
-{idt}import {cdtModuleName}
-{idt}import {vltModuleName}.{buffreadModuleName} as {buffreadModuleName}
-{idt}{buffreadClassName} = {buffreadModuleName}.{buffreadClassName}
+{idt}{vltModuleImport}
+{idt}{cdtModuleImport}
+{idt}{buffreadModuleImport}
 
 {idt}commands = {dictpycmd}
 {idt}msg = "{className}"
@@ -537,7 +570,7 @@ class {className}({derived}):
 cls  = {className}
 """
 
-def dict2py(data, className, derived="vlt.Process", indent=0,
+def dict2py(data, className, derived=vltModulePref+"Process", indent=0,
             classComment=None, fileName=""):
     """
     Transform a cdt definition dictionary (parsed from Cdt class)
@@ -579,7 +612,7 @@ typeDict = {
 # CDT type to format dictionary transformation
 formatDic = {
     "INTEGER": '"%d"',
-    "LOGICAL": modulePref+"formatBoolCommand",
+    "LOGICAL": vltModulePref+"formatBoolCommand",
     "REAL": '"%f"'
     }
 
@@ -614,7 +647,7 @@ def dict2pyCommands(commands, indent=0):
 
 
 def dict2pyCommand(command, data, keyMakerFunc=keyCommandMaker, indent=0):
-    return '%s"%s"\t:%sCommand("%s",%s,helpText="""%s""", bufferReader=%s.getreader("%s"))'%(indentStr*indent, keyMakerFunc(command), modulePref, command, dict2pyOptions(data.get("PARAMETERS",{}), cmd=command), data.get("HELP_TEXT", ""), buffreadClassName , command)
+    return '%s"%s"\t:%sCommand("%s",%s,helpText="""%s""", bufferReader=%s.getreader("%s"))'%(indentStr*indent, keyMakerFunc(command), vltModulePref, command, dict2pyOptions(data.get("PARAMETERS",{}), cmd=command), data.get("HELP_TEXT", ""), buffreadClassName , command)
 
 
 def dict2pyOptions(options, indent=0, cmd=""):
@@ -623,4 +656,4 @@ def dict2pyOptions(options, indent=0, cmd=""):
 
 
 def dict2pyOption(name, option, cmd=""):
-    return """"%s":%sParam("%s", %s, %s)""" % (keyOptionMaker(name),modulePref,scripOptionMaker(name), type2py(option.get('TYPE',"str"), name, cmd), type2pyFormat(option.get("TYPE",'"%s"')))
+    return """"%s":%sParam("%s", %s, %s)""" % (keyOptionMaker(name),vltModulePref,scripOptionMaker(name), type2py(option.get('TYPE',"str"), name, cmd), type2pyFormat(option.get("TYPE",'"%s"')))

@@ -1,7 +1,8 @@
 
 import re
 from .action import Actions
-from .mainvlt import cmd, getProc, dotkey, undotkey
+from .mainvlt import cmd, dotkey, undotkey, vltbool
+from .process import getProc
 from .config import config
 KEY_MATCH_CASE = config.get("key_match_case", False)
 
@@ -448,12 +449,30 @@ def matchKey(key):
     return FunctionKeyi.matchNew(key) or FunctionKeyList.matchNew(key)  or FunctionKeySlice.matchNew(key) or FunctionKey.matchNew(key)
 
 def upperKey(key):
+    out = []
+    for k in dotkey(key).split("."):
+        out.append(_upperKey(k))
+    return ".".join(out)
+
+
+def _upperKey(key):
     ukey = key.upper()
     if key[-1] in ["i", "j", "k"]:
         if key[0:-1] == ukey[0:-1]:
             return key
     return ukey
 
+class FunctionIter:
+    def __init__(self, function):
+        self.function = function
+        self.indexes = function._getAllIndexes()
+        self.counter = -1
+        self.size = len( self.indexes)
+    def next(self):
+        self.counter += 1
+        if self.counter >= self.size:
+            raise StopIteration("out of range")
+        return self.function[self.indexes[self.counter]]
 
 
 class Function(object):
@@ -516,7 +535,7 @@ class Function(object):
 
     def __init__(self, msg, value=None, dtype=None, format="%s", default=None,
                  index=None, comment="", description="", unit="", context="",
-                 cls=None, selected=False,   statusFunc=None,
+                 cls=None, selected=False,   statusFunc=None, range=None,
                  _void_=False):
         if _void_: #_void_ is for internal use only. To create an empty instance
                    #_void_ is used by _new and therefor the copy funtions
@@ -539,8 +558,9 @@ class Function(object):
             dtype = str if value is None else type(value)
         self.setFormat(format)
         self.setDtype(dtype)
-
+        self.setRange(range)
         self.setValue(value)
+
 
         self.setDefault(default)
         self.setComment(comment)
@@ -691,6 +711,7 @@ class Function(object):
 
   format = {format}
   type   = {type}
+  range  = {range}
   unit   = {unit}
 
   class : {cls}
@@ -700,7 +721,7 @@ class Function(object):
 
   onValueChange: {nonvaluechange:d} actions
   onSetup: {nonsetup:d} actions
-""".format(**self.infoDict())
+""".format(self,**self.infoDict())
     def infoDict(self):
         """
         Returns
@@ -731,6 +752,7 @@ class Function(object):
             msg = self.getMsg(),
             iterable = "iterable " if self.isIterable() else "",
             value= value,
+            range= self.getRange(),
             default=default,
             format=self.getFormat(),
             type = self.getDtype(),
@@ -1184,6 +1206,39 @@ class Function(object):
             dtype = vltbool
         self.params["dtype"] = dtype
 
+    def setRange(self, range):
+        if range is None:
+            self.params["range"] = None
+            return
+
+        if isinstance(range, tuple):
+            if len(range) != 2:
+                raise ValueError("expecting a 2 tuple for parameter range got %s " % (range,))
+
+            try:
+                range = tuple( self.parseValue(r) for r in range )
+            except ValueError as e:
+                raise ValueError("While parsing range: "+str(e))
+
+
+        elif not (hasattr(range, "__iter__") and
+                  hasattr(range, "__contains__")):
+            raise ValueError("Expecting a iterable object for parameter range got %s " % (range,))
+
+        try:
+            range = set( self.parseValue(r) for r in range )
+        except ValueError as e:
+            raise ValueError("While parsing range: "+str(e))
+
+        if self.hasValue() and not self._test_range(self.getValue(), range):
+            raise ValueError("Cannot change the range to %s because the curent value is out of range, change the value first" % (range,))
+
+        self.params["range"] = range
+
+    def getRange(self):
+        """Return the function range """
+        return self.params.get("range", None)
+
     def _cmdIterableWalker(self, dval, out , itr=[], context=None):
         if not isinstance( dval, dict):
             out += [(self.rebuildListMsg( tuple(itr)), self.formatValue(dval , context=context))]
@@ -1387,11 +1442,36 @@ class Function(object):
         return self.formatValue(self.getDefault(*args), context=context)
     getFd = getFormatedDefault
 
+    @staticmethod
+    def _test_range(value, range):
+        """ test if value is within range """
+        if range is None:
+            return True
+        if isinstance(range, tuple):
+            # a tuple is interpreted as a (min, max) value
+            mini, maxi = range
+            if mini is not None and value<mini:
+                return False
+            if maxi is not None and value>maxi:
+                return False
+            return True
+        # otherwhise considers that it is a list or set
+        return value in range
+
+    def _parse_one(self, value):
+        try:
+            value = self.getDtype()(value)
+        except ValueError:
+            raise ValueError("Cannot convert '%s' to the expecting type %s for function '%s'"%(value, self.getDtype(), self.getMsg()))
+        if not self._test_range(value, self.getRange()):
+            raise ValueError("%s is out of range or not in set for function '%s'" % (value, self.getMsg()))
+        return value
 
     def _parse_walker(self, d):
         if isinstance( d , dict):
             return { k:self._parse_walker( subd) for k,subd in d.iteritems() }
-        return self.getDtype()(d)
+        return self._parse_one(d)
+
 
     def parseValue(self, value):
         # if the value is a list or any iterable and self is iterable e.i., msg containe '#'
@@ -1406,10 +1486,7 @@ class Function(object):
             return [self.getDtype()(v) for v in value]
         if value is None:
             return None #a none value erase the previous value
-        try:
-            return self.getDtype()(value)
-        except ValueError:
-            raise ValueError("Cannot convert '%s' to the expecting type %s for param '%s'"%(value,self.getDtype(), self.getMsg()))
+        return self._parse_one(value)
 
     def formatValue(self, value, context=None):
         if context is not None:
@@ -1494,6 +1571,9 @@ class Function(object):
     cls = property(fget=getCls, fset=setCls,
                    doc="Function Class list"
                    )
-
+    range = property(
+                     fget=getRange, fset=setRange,
+                     doc="Function range"
+                     )
 
 

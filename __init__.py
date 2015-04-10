@@ -1,10 +1,15 @@
 import mainvlt as vlt
-from .mainvlt import *
+from process import setDefaultProcess, getDefaultProcess
+from mainvlt import EmbigousKey,  cmd, dotkey, undotkey
+
 from .function import Function
 from .functiondict import FunctionDict, functionlist
 from .sequence import sequence, sequences
 
 from . import devices
+
+from io import openProcess, processClass, readDictionary
+
 
 
 #import processes as proc

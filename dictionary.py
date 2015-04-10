@@ -250,7 +250,7 @@ class Dictionary(file):
 
 
             spline = nline.split(":", 1)
-            if len( spline)<2:
+            if len(spline)<2:
                 line = self.readline()
                 continue
 

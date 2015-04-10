@@ -44,7 +44,8 @@ def package_dir(relative_path):
 
 config = {
     # list of directories containing the CDT files
-    "cdtpath": env_path("INTROOT", "CDT"),
+    "cdtpath": env_path("INTROOT", "CDT")+
+               env_path("VLTROOT", "CDT"),
 
     # list of directory where cdt temporaly py file will be
     # created
@@ -55,10 +56,23 @@ config = {
     # list of directories containing the dictionary files
     "dictionarypath": env_path("INS_ROOT", "SYSTEM/Dictionary")+
                       env_path("VLTROOT", "config"),
+    # dictionary file prefix
+    "dictionaryprefix":"ESO-VLT-DIC.",
     # if key_match_case is true, the Function anf FunctionDict objects
     # becomes case sensitive meaning that, e.g, dcs["DIT"] != dcs["dit"]
     # default is false
-    "key_match_case": False
+    "key_match_case": False,
+    # The system command for msgSend
+    #
+    "msgSend_cmd": "msgSend",
+    # a default timeout for msgSend commands, leave it None for
+    # no default
+    "timeout": None,
+    # in debug mode msgSend are not sent
+    "debug": False,
+    # verbose level
+    "verbose": 1,
+
 }
 
 # debug local configuration
@@ -66,5 +80,5 @@ config["cdtpath"] += ["/Users/guieu/python/vlt/CDT"]
 config["dictionarypath"] += ["/Users/guieu/python/vlt/Dictionary",
                              "/Users/guieu/python/vlt/Dictionary/CCSLite"
         ]
-
+config["debug"] = not os.getenv("HOST")  in ["wbeti" , "wpnr" , "wbeaos"]
 

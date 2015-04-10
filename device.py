@@ -1,4 +1,5 @@
-from vlt import FunctionDict, DEFAULT_TIMEOUT, EmbigousKey
+from .functiondict import FunctionDict
+from .mainvlt import DEFAULT_TIMEOUT, EmbigousKey
 
 
 class Device(FunctionDict):

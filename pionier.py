@@ -1,6 +1,6 @@
 from __future__ import print_function
-from vlt import processClass, devices, readDictionary, EmbigousKey
-
+from vlt import processClass, devices, EmbigousKey
+from vlt.io import readDictionary
 
 def log(*msg, **kwargs):
     print(*msg, **kwargs)
@@ -90,6 +90,8 @@ det = PionierDetector(
 det["TYPE"] = det["DPR.TYPE"]
 # set the default mode to ENGINEERING
 det["mode"] = "ENGINEERING"
+det["imgname"] = dpr_id+"_"
+
 
 
 
