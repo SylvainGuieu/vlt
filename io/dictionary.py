@@ -2,6 +2,7 @@ from .keywords import KeywordFile
 from ..function import Function
 from ..functiondict import FunctionDict
 from ..config import config
+from ..mainvlt import formatBoolFunction
 import os
 import numpy as np
 
@@ -78,15 +79,22 @@ def _dictionary_type(value):
     if not value in param_types:
         raise TypeError("the type '%s' for parameter '%s' is unknown"%(value, f.curentParameterName))
     return param_types[value]
+def _dictionary_format(dtype,format):
+    if dtype is bool:
+        return formatBoolFunction
+    return format
+
 
 def parameter2function(key, param, cls=Function):
+    dtype = _dictionary_type(param.get("Type","string"))
+    format= _dictionary_format(dtype, param.get('Value Format', "%s"))
     return cls(key,
-               dtype = _dictionary_type(param.get("Type","string")),
+               dtype = dtype,
                cls = param.get('Class', "").split("|"),
                context = param.get('Context', ""),
                description = param.get('Description', ""),
                unit = param.get('Unit',None),
-               format = param.get('Value Format', "%s"),
+               format = format,
                comment = param.get('Comment Format',
                                    param.get('Comment Field',"")
                                    )
