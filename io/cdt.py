@@ -217,7 +217,7 @@ class Cdt(file):
             #take the file name (without extention) as default for className
             className = os.path.splitext(os.path.split( self.name)[1])[0]
             if re.search( "[^a-zA-Z0-9_]" , className) or re.search( "[^a-zA-Z_]" , className[0]):
-                raise TypeError("Cannot convert filename '%s' to python class name, contains invalid crocheters, please provide a class name"%(className))
+                raise TypeError("Cannot convert filename '%s' to python class name, contains invalid caracheters, please provide a class name"%(className))
         return dict2py(self.commands, className, derived=derived,
                        classComment=classComment, fileName=self.name)
 
@@ -365,6 +365,7 @@ class Cdt(file):
 
         TODO: check what define a new parameter definition block
               Empty line or PAR_NAME keyword ?
+        Should be PAR_NAME i think
 
         PARAMETERS=
             PAR_NAME=           type
@@ -387,7 +388,7 @@ class Cdt(file):
         #  a line can have space in it, in this case
         #  it is not considered as a end of Parameter definition
         #  not sure about the grammar
-        if not len(line):
+        if not len(line) or line[0:2] == "//":
             return self.readline()
 
         if line[0:4] != "PAR_":
