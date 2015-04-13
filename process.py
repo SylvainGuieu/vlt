@@ -8,7 +8,7 @@ msgSend_cmd = config.get("msgSend_cmd", "msgSend")
 def getProc(proc=None):
     return proc if proc is not None else getDefaultProcess()
 
-
+_defaultProcess = None
 def setDefaultProcess(proc):
     """ set the default process for the vlt module """
     global _defaultProcess
