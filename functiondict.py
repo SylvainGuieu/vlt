@@ -4,6 +4,7 @@ from .function import Function, upperKey, FunctionMsg
 from .process import getProc
 from .action import Actions
 from .config import config
+from .process import Process
 KEY_MATCH_CASE = config.get("key_match_case", False)
 
 

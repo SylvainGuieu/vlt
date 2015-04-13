@@ -1510,7 +1510,7 @@ class Function(object):
 
     def status(self,proc=None, **kwargs):
         if proc is None:
-            proc = getDefaultProcess()
+            proc = getProc()
             if proc is None:
                 raise Exception("not defaultProcess set in vlt module")
         if self.statusFunc:
