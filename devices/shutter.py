@@ -1,4 +1,4 @@
-from ..device import Device
+from ..device import Device, cmd
 class Shutter(Device):
     """
     shutter is a Device object and provide the additional
