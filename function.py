@@ -1,7 +1,7 @@
 
 import re
 from .action import Actions
-from .mainvlt import cmd, dotkey, undotkey, vltbool
+from .mainvlt import cmd, dotkey, undotkey, vltbool, cmd2str
 from .process import getProc
 from .config import config
 KEY_MATCH_CASE = config.get("key_match_case", False)
@@ -479,41 +479,77 @@ class Function(object):
     """
     Function is basicaly an object carrying a keyword (called also function
     in vlt software) and a value.
-    It represent any keywords found in vlt dictionaries with special and very useful
+    It represents any keywords found in vlt dictionaries with special and very useful
     behavior for iterable keys like e.g "DETi WINi"
     On top of a keyword/value pair it carries numerous parameters (see bellow).
 
-    Parameters
-    ----------
-    msg   : The keyword, the message function e.g. "DET DIT" same as "DET.DIT"
-    value (=None) : Value corresponding to function can be None if no value is set
+    Args
+    ----
+        msg (string)  : The keyword, the message function e.g. "DET DIT" same as "DET.DIT"
 
-    default (=None): a default value if value is not set (e.i =None)
+        value (Optional[any]) : Value corresponding to function None signify no value set yet
 
-    format (="%s"): the str python format to represent the object when passed
-                    in command e.g.: "%2.3f" format can also be a function
-                    accepting one argument (the value) and returning a string
+        default (=None): a default value if value is not set. This was an idea that a Function
+            can have a default before beeing updated from the instrument but in practic is not
+            realy useful
 
-    dtype (=None): the data type, e.g: float, int, str, ... can also be a function
-    unit (="")   : value unit
+        format (="%s"): the str python format to represent the object when passed
+                        in command e.g.: "%2.3f".
+                        format can also be a function
+                        accepting one argument (the value) and returning a string
 
-    comment (="") : value comment
-    description (="") : value desciption
-    context (="") : data vlt context, e.g. "Instrument"
-    cls (=[])     : list of vlt class e.g.: ['header', 'setup']
-    statusFunc (=None) : a string or Function used to send a status command,
-                         default is the Function msg itself.
+        dtype (Optional[type]): the data type, e.g: float, int, str, ... can also be a function
+            if None dtype is gessed from value
+
+        unit (Optional[string]) : value unit default ""
+
+        comment (Optional[string]) : value comment , default ""
+
+        description (Optional[string]) : value desciption, default ""
+
+        context (Optional[string]) : data vlt context, e.g. "Instrument"
+
+        cls (Optional[iterable]) : list of vlt class e.g.: ['header', 'setup'], default is []
+
+        statusFunc (Optional[string]) : a string or a Function used to ask the status to the instrument,
+                    default is the Function msg itself.
 
 
-    Attributes
-    ----------
-    copy(copyValue) : make a copy
+    Methods
+    -------
+      Object creation/info/copy
+        copy : make a copy
+        new  : copy and set new value
+        info     : print useful information about the Function
+        infoStr  : return a string with useful information about the Function
+        infoDict : return a dictionary containing the same info printed in infoStr
+        newFromCmd : return a new Function object from string or tuple
 
-    info()    : print useful information about the Function
-    infoStr() : return a string with useful information about the Function
-    infoDict(): return a dictionary containing the same info printed in infoStr
+      get/set Parameter and value
+        getValue : return the curent value
+        setValue : set a or several (if iterable) value
+        hasValue : return True if value is defined
+        hasDefault : -> True if a default is set
+        cleanUp  : erase all values
+        functions : return a list of all function with a value set
+
+        setMsg : set the message, function keyword
+        getMsg : get the message
+        Other parameters set/get :
+            setComment/getComment, setDescription/getDescription, setUnit/getUnit
+            setContext/getContext, setCls/getCls, setDefault/getDefault,
+            setFormat/getFormat, setDtype/GetDtype, setRange/getRange
+
+        match : match if a string is part of the Function message
+        isIterable : -> True if Function is iterable, e.i. has "ABCDi" key likes
+
+      Process/Instrument communication:
+        cmd : Return process function commands in list
 
 
+      Others:
+        select : select the Function for interactive stuf
+        unselect, isSelected : speak by themself
 
     """
     default   = None
@@ -587,12 +623,12 @@ class Function(object):
 
         This function provide a quick way to build a function. Usefull to
         parse a string into a python vlt Function object.
-        It try to be smart at gessing the righ dtype: e.g  '5' will be a int
+        It tries to be smart at gessing the righ dtype: e.g  '5' will be a int
          '5.6' will be a float, 'T' will be True, etc ...
         if the value cannot be converted to numerical or boolean it is
         considered as a string.
         The tuple can have:
-          1 element: key, value stay None and dtype is str
+          1 element: key,: value stay None and dtype is str
           2 elements:  key and value, dtype is guessed
                     or key and dtype, value stay None
           3 elements:  key, value, dtype
@@ -934,6 +970,18 @@ class Function(object):
 
 
     def functions(self, default=False, onlyIfHasValue=True, errorIfNoLen=False):
+        """ Return a list of 'scalar' function made from self
+
+        e.g.:
+           >>> f = Function("INSi.SENSi.VAL")
+           >>> f["INS1.SENS1.VAL"] = 2.3
+           >>> f["INS1.SENS2.VAL"] = 2.3
+           >>> f["INS4.SENS8.VAL"] = 9.0
+           >>> f.functions()
+           [Function("INS1.SENS2.VAL", '2.3'),
+            Function("INS1.SENS1.VAL", '2.3'),
+            Function("INS4.SENS8.VAL", '9.0')]
+        """
         if onlyIfHasValue and not self.hasValue(default=default):
                 return []
 
@@ -980,16 +1028,24 @@ class Function(object):
         """
         return the value if set (not None) else raise a ValueError
 
-        Parameters
-        ----------
-        default (=False): return default value (if exists) if the value is not set.
-        context (=None) : a context FunctionDict or dictionary instance with key/values
-             pair. context is used the rebuild bracketed string value from the dictionary
-             e.g. :  >>> f = Function( "DET FILE", "exop_{type}_{dit}.fits")
-                     >>> f.getValue( context=dict(type="FLAT", dit=0.002))
-        index (=None): index of returned value if function is iterable
+        Args:
+        -----
+            value (Optional): a default if value is not set
+            default (Optiona[bool]): return stored default value (if exists) if
+                the value is not set. Default is False
+            context (Optional[dict/FunctionDict]) : a context FunctionDict or dictionary instance
+                with key/values pair.
+                context is used the rebuild a bracketed string value
+                 e.g. :  >>> f = Function( "DET FILE", "exop_{type}_{dit}.fits")
+                         >>> f.getValue( context=dict(type="FLAT", dit=0.002))
 
+            index (Optional[tuple]): indexes of value if function is iterable
+                >>> f[1,1].getValue() <-> f.getValue(index=(1,1))
 
+        Return:
+            Any stored value
+        Raises:
+            ValueError if not default is given and no value is stored
 
         """
 
@@ -1017,6 +1073,7 @@ class Function(object):
     get  = getValue
 
     def getValueOrDefault(self, index=None):
+        """ return self.getValue(default=True) """
         return self.getValue(default=True, index=index)
     getVod = getValueOrDefault
 
@@ -1038,6 +1095,7 @@ class Function(object):
         return not self.hasValue()
 
     def cleanUp(self, index=None):
+        """ Clean the Function, all values are erased """
         self = self._getOrCreate(index)
         if not self.isIterable():
             return
@@ -1076,7 +1134,29 @@ class Function(object):
 
     def setValue(self, value, index=None):
         """ set the function value.
-        the value must be parsed by dtype
+
+        the value must be parsable by the Function dtype
+        If the function is an iterable a input dictionary is accepted
+
+        Args:
+        -----
+            value : scalar value or dict if iterable Function
+            index (Optional[tuple]) : value index
+                e.g : f[1,2].setValue(3.4) <-> f.setValue(3.4, index=(1,2))
+        Examples:
+        ---------
+            >>> f = Function("INSi.SENSi.VAL")
+            >>> f["INS1.SENS2.VAL"].setValue(3.4)
+          equivalent to
+            >>>> f["INS1.SENS2.VAL"] = 3.4
+          or
+            >>>> f[1,2] = 3.4
+
+            >>>> f.setValue( {1:{1:3.4, 2:6.8}} )
+          or
+            >>>> f.setValue({'INS1': {'SENS1': '3.4', 'SENS2': '6.8'}})
+
+
         """
         self = self._getOrCreate(index)
 
@@ -1098,28 +1178,38 @@ class Function(object):
         oldvalue = self._value
         self._value = self.parseValue(value)
         self.onValueChange.run(self, oldvalue)
-
+        return self
     set  = setValue
 
     def setComment(self,comment):
+        """ set the comment string parameter """
         self.params['comment'] = str(comment)
     def getComment(self):
+        """ get the command string parameter """
         return self.params.get('comment', "")
     def setDescription(self, description):
+        """ set the string description parameter """
         self.params['description'] = str(description)
     def getDescription(self):
+        """ get the description string parameter """
         return self.params.get('description', "")
     def setUnit(self,unit):
+        """ set the string unit parameter """
         self.params['unit'] = str(unit)
     def getUnit(self):
+        """ get the string unit parameter """
         return self.params.get("unit","")
     def setContext(self,context):
+        """ set the context string parameter e.g 'Instrument' """
         self.params["context"] = str(context)
     def getContext(self):
+        """ get the context string parameter """
         return self.params.get("context")
     def setCls(self,cls):
+        """ set a list of vlt classes e.g. ['header', 'setup'] """
         self.params["cls"] = list(cls or [] )
     def getCls(self):
+        """ return list of classes """
         return self.params.get("cls",[])
 
     def setMsg(self, msg, sep=None):
@@ -1161,6 +1251,12 @@ class Function(object):
                                            )
 
     def isIterable(self):
+        """ True if Function is iterable, e.i. has "ABCDi" keys likes
+
+        Example:
+            Function("INSi.SENSi.VAL").isIterable() -> True
+            Function("INS1.SENS1.VAL").isIterable() -> False
+        """
         return self.getFunctionMsg().isIterable()
 
 
@@ -1184,12 +1280,14 @@ class Function(object):
 
 
     def setFormat(self, fmt):
+        """ set the string format for value (with the %) """
         if not issubclass( type(fmt), str) and not hasattr( fmt, "__call__"):
             raise ValueError("if format is not a string or tuple, should be a callable function or object ")
         self.params["format"] = fmt
 
 
     def getFormat(self, tp=0):
+        """get the fromat parameter """
         if tp>1 or tp<0:
             raise ValueError("type must be 0 for setup format or 1 for rebuilt format")
         fmt = self.params.get("format", "%s")
@@ -1199,9 +1297,11 @@ class Function(object):
 
 
     def getDtype(self):
+        """ get the value  type """
         return self.params.get("dtype", str)
 
     def setDtype(self, dtype):
+        """ set the value type """
         if dtype is bool:
             dtype = vltbool
         self.params["dtype"] = dtype
@@ -1225,13 +1325,19 @@ class Function(object):
                   hasattr(range, "__contains__")):
             raise ValueError("Expecting a iterable object for parameter range got %s " % (range,))
 
-        try:
-            range = set( self.parseValue(r) for r in range )
-        except ValueError as e:
-            raise ValueError("While parsing range: "+str(e))
+        else:
+            try:
+                range = set( self.parseValue(r) for r in range )
+            except ValueError as e:
+                raise ValueError("While parsing range: "+str(e))
 
-        if self.hasValue() and not self._test_range(self.getValue(), range):
-            raise ValueError("Cannot change the range to %s because the curent value is out of range, change the value first" % (range,))
+        if self.isIterable():
+            for f in self.functions():
+                if f.hasValue() and not f._test_range(f.getValue(), range):
+                    raise ValueError("Cannot change the range of '%s' to %s because the curent value is out of range, change the value first" % (f.getMsg(), range))
+        else:
+            if self.hasValue() and not self._test_range(self.getValue(), range):
+                raise ValueError("Cannot change the range to %s because the curent value is out of range, change the value first" % (range,))
 
         self.params["range"] = range
 
@@ -1247,10 +1353,10 @@ class Function(object):
             self._cmdIterableWalker(v, out, itr+[k], context)
 
     @classmethod
-    def _getAllIndexes(self, indexes):
-        return self._getAllIndexesWalker( self._value, list(indexes))
+    def _getAllIndexes(cls, indexes):
+        return cls._getAllIndexesWalker( cls._value, list(indexes))
     @classmethod
-    def _getAllIndexesWalker( self, values, idx, shift=0):
+    def _getAllIndexesWalker(cls, values, idx, shift=0):
         if shift == len(idx)-1:
             if idx[shift] is None:
                 out = []
@@ -1265,47 +1371,28 @@ class Function(object):
             out = []
             for k in values:
                 idx[shift] = k
-                out += self._getAllIndexesWalker( values[k], idx, shift+1)
+                out += cls._getAllIndexesWalker( values[k], idx, shift+1)
             return out
 
-        return self._getAllIndexesWalker( values[idx[shift]], idx, shift+1)
+        return cls._getAllIndexesWalker( values[idx[shift]], idx, shift+1)
 
-    def todict( self, indexes=None, prefix=False, keyconvert=str, intkey=False):
-        if not self.isIterable():
-            raise Exception("This function is not iterable")
 
-        msg = self.getMsg(dot=True)
-        if isinstance(prefix, str):
+    def todict( self, keyconvert=str):
+        """ If Function is iterable return a dictionary of non-iterable Function
 
-             prefix = dotkey(prefix)
-             if msg[0:len(prefix)] != prefix:
-                  raise KeyError( "prefix '%s' do not match key '%s'"%(prefix,self.getMsg()))
-             plen = len(prefix) +  (msg[len(prefix)] == ".")
-        elif prefix is True:
-             keys = msg.split(".")
-             plen = 0
-             for k in keys:
-                  if self._num_re.match(k): break
-                  plen += len(k)+1
-        elif isinstance(prefix, int):
-             plen = prefix
-        else:
-             plen = 0
+        affect only value already set.
 
-        if indexes is None:
-             indexes = self._value.keys()
+        Args:
+        
+            keyconverter (Optional[function]) : a optional function that convert the
+                original key to an other. The function must take one argument.
 
-        if isinstance(indexes, slice):
-             indexes = range( indexes.start or min(self._value.keys()),
-                              indexes.stop  or max(self._value.keys())+1,
-                              indexes.step or 1
-             )
-        out = {}
-        for i in indexes:
-             f   = self[i]
-             key = i if intkey else keyconvert(f.getMsg()[plen:None])
-             out[key] = f
-        return FunctionDict(out)
+        See Also:
+            functions : return functions in a flat list
+        """
+        fcs = self.functions()
+        return {keyconverter(f.getMsg()):f for f in fcs}
+
 
     def strKeyToIndex(self, key):
         if not self.isIterable():
@@ -1317,6 +1404,24 @@ class Function(object):
 
 
     def cmd(self, value=None, default=False, context=None):
+        """ return a list of command functions ready to parse in a process
+
+        If proc is a process and f a Function :
+            proc.setup( function=f.cmd() )
+          is equivalent to:
+            f.setup( proc=proc )
+
+        Args:
+            value (Optional): change temporaly the value on the fly for the command
+            default (Optional[bool]) : if no value set send the default. default is False
+            context (Optional) : function context to convert bracketed values
+
+        See Also Method:
+            setup : setup the instrument
+            update : update current value from instrument
+
+        """
+
         return cmd(map( lambda f: (f.getMsg(context=context),
                                   f.formatStripedValue(
                                   f.getValue(default=default) if value is None else value,
@@ -1333,7 +1438,7 @@ class Function(object):
         msg = opt.rebuildMsg(replacement)
 
         if the message of the opt object is a string of the form "INS.OPT{optnumber}_"
-        look for "optnumber" inside the replacement dict
+        look for "optnumber" inside the replacement dictionary
         and replace {optnumber} by its value.
         Also the replacement patern can contain a format separated by a ',' : e.g.  "INS.OPT{optnumber,%04d}"
         Return the value of opt if it is not a string
@@ -1463,8 +1568,12 @@ class Function(object):
             value = self.getDtype()(value)
         except ValueError:
             raise ValueError("Cannot convert '%s' to the expecting type %s for function '%s'"%(value, self.getDtype(), self.getMsg()))
-        if not self._test_range(value, self.getRange()):
-            raise ValueError("%s is out of range or not in set for function '%s'" % (value, self.getMsg()))
+        rg = self.getRange()
+        if not self._test_range(value, rg):
+            if isinstance(rg, tuple):
+                raise ValueError("%s is out of range %s for function '%s'"%(value, rg, self.getMsg() ))
+            else:
+                raise ValueError("%s is in the set %s for function '%s'" % (value, rg, self.getMsg()))
         return value
 
     def _parse_walker(self, d):
@@ -1489,6 +1598,7 @@ class Function(object):
         return self._parse_one(value)
 
     def formatValue(self, value, context=None):
+        """ return the curent value as a formated string """
         if context is not None:
             value = self._rebuildVal( value, context)
 
@@ -1499,16 +1609,46 @@ class Function(object):
         return self.formatValue(value, context=context).strip()
 
     def getProc(self, proc=None):
+        """ getPtoc(proc) return proc if not None else return the default
+
+        if proc is None and no default was set Raise a TypeError
+
+        See Also:
+            vlt.setDefaultProcess
+        """
         return getProc(proc)
     proc = property(fget=getProc, doc="Function default process")
 
     def setup(self, value=None, proc=None, **kwargs):
+        """ send setup command to the default or specified process coresponding
+        to the keyword/value pair of the Function.
+
+        Parameters:
+        -------
+           value [optional]: use a value different than the one stored in
+                             the Function.
+           proc [optional]: use the process proc otherwhise use the default one
+                            (see vlt.setDefaultProcess)
+
+        Returns:
+        -------
+
+        Example:
+
+
+        """
         proc = getProc(proc)
         out = proc.setup(function=self.cmd(value)+kwargs.pop("function",[]), **kwargs)
         self.onSetup.run(self)
         return out
 
     def status(self,proc=None, **kwargs):
+        """ Return the status of this function
+
+        As the buffer can take several entry, the result
+        is returnde in a ditionary.
+
+        """
         if proc is None:
             proc = getProc()
             if proc is None:
@@ -1520,16 +1660,39 @@ class Function(object):
         return proc.status(function=msg, **kwargs)
 
     def update(self, proc=None):
+        """ Get the status from the process and update the Function value
+
+        The buffer of the status function should return the Key/value pair if any
+        of the keys does not match the Function key (/msg) raise RunTimeError
+
+        Return nothing but modify Value.
+
+        See Also Methods:
+            status : just get the status without updating
+            getOrUpdate : return the value if defined or update then return
+        """
         res = self.status(proc)
         msg = self.getMsg()
         if not msg in res:
-            raise Exception("weird, cannot find key '%s' in buffer result"%msg)
+            raise RuntimeError("weird, cannot find key '%s' in buffer result"%msg)
         self.setValue(res[msg])
 
-    def updateDict(self, funclist, proc=None):
+    def updateDict(self, funcdict, proc=None):
+        """ From the dictionary returned by .status
+
+        update a function dictionary
+        Args:
+            funcdict : The FunctionDict or dict to update
+            proc : the process, if None take the defaullt one
+
+        See Also Methods:
+            update, setup, getOrUpdate
+        """
         res = self.status(proc)
-        funclist.update( res )
+        funcdict.update( res )
     def getOrUpdate( self, proc=None):
+        """ if the Function has value return it else update from proc and than return
+        """
         if self.hasValue():
             return self.get()
         self.update(proc=proc)

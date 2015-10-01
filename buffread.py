@@ -5,14 +5,14 @@ class Buffreader(object):
         if cmd in self.__class__.__dict__:
             return self.__getattribute__(cmd)
         return self.general
-    
+
     def general(self,buf):
         return buf
-        
+
     def warning(self, msg, rtr=None):
         print "Warning ",msg
         return rtr
-    
+
     def bufferLines(self, buf):
         sbuf = buf.split("\n")
         if sbuf[0].lstrip() != "MESSAGEBUFFER:":
@@ -20,7 +20,7 @@ class Buffreader(object):
             return []
         sbuf.pop(0)
         return sbuf
-        
+
     def expoid(self, buf):
         buf = self.bufferLines(buf)
         if len(buf)<1:
@@ -33,7 +33,7 @@ class Buffreader(object):
             return -1
     setup = expoid
     wait  = expoid
-    
+
     def status(self, buf):
         buf = self.bufferLines(buf)
         if not len(buf):
@@ -41,19 +41,19 @@ class Buffreader(object):
         return self._status(buf[0])
     def status2(self,buf):
         return self._status(buf)
-        
-    def _status(self, buf, splitter=","):        
+
+    def _status(self, buf, splitter=","):
         buf = buf.split(splitter)
         try:
             narg = int(buf[0])
         except:
-            self.warning("cannot read the number of key/val pairs")
+            #self.warning("cannot read the number of key/val pairs")
             narg = -1
         if narg>-1:  buf = buf[1:None]
-        if narg!=len(buf):
+        if narg!=len(buf) and narg>-1:
             self.warning("expecting %d key/val pairs got %d "%(narg,len(buf)))
-        
-        output = {}        
+
+        output = {}
         for line in buf:
             sbuf = line.split(" ",1)
             if len(sbuf)<2:
@@ -66,12 +66,12 @@ class Buffreader(object):
                     try:
                         val = float(sval)
                     except:
-                        val = sval.strip('"')                
+                        val = sval.strip('"')
                 output[sbuf[0].lstrip()] = val
         return output
-    
+
     def state(self, buf):
-        buf = self.bufferLines(buf)     
+        buf = self.bufferLines(buf)
         if not len(buf):
             self.warning("state values not understood")
             return (None,None)

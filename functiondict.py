@@ -47,6 +47,17 @@ def functionlist(*args):
     fd.add(*args)
     return fd
 
+def _test_rec_value(ftest, f, out):
+    if not f.isIterable():
+        if ftest(f.getValue()):
+            out[f.getMsg()] = f
+        return
+
+    for k in f:
+        _test_rec_value(ftest, f[k], out)
+
+
+
 class FunctionDict(dict):
     keySensitive  = False
     dotSensitive  = False
@@ -273,7 +284,11 @@ class FunctionDict(dict):
         out = {}
         for k,f in self.iteritems():
             for p in params:
-                if test( p,getmethod(f)):
+                t = test( p,getmethod(f))
+                if isinstance(t, tuple): # got a test, key pair
+                    t, matched_f = t
+                    out[matched_f.getMsg()] = matched_f
+                elif t:
                     out[k] = f
                     continue
         return self._copy_attr( self.__class__(out))
@@ -290,10 +305,39 @@ class FunctionDict(dict):
         return self.restrictParam(context, self._child_object.getContext, lambda p,l: p==l)
 
     def restrictValue(self, value):
-        """ return a restricted FunctionDict of Function with value """
+        """ return a restricted FunctionDict of Function with the given value
+
+        if value is a list, return Function of all matched values.
+        value can be a function that takes one argument (the value to test)
+
+        The test is executed only on Functions that has a value, so :
+              d.restrictValue( lambda v:True)
+            is equivalent to
+              d.restrictHasValue()
+
+        Examples:
+            d.restrictValue([1,10])
+            d.restrictValue(lambda v:v>1.0)
+            d.restrictValue(lambda v: v is "TEMPERATURE")
+
+        """
+
+        if hasattr(value, "__call__"):
+            ftest = value
+        else:
+            if not isinstance(value , (list,tuple)):
+                value = [value]
+            ftest = lambda v: v in value
+
+        out = {}
+        for k,f in self.restrictHasValue().iteritems():
+             _test_rec_value(ftest, f, out)
+
+        return self._copy_attr( self.__class__(out))
+
         return self.restrictHasValue().restrictParam([value],
-                                                     self._child_object.getValue,
-                                                     lambda p,l: p==l)
+                                                     lambda f: f,
+                                                     _test_rec_value)
 
     def restrictHasValue(self):
         """ Return a FunctionDict with the child Function that have a
@@ -311,7 +355,7 @@ class FunctionDict(dict):
           will return a FunctionDict containing the "NAME" key like
              for instance  "INS1.FILT1.NAME"
         """
-        return self.restrict([k for k,f in self.iteritems() if not f .match(pattern)])
+        return self.restrict([k for k,f in self.iteritems() if f.match(pattern)])
 
 
     def has_key(self,key):

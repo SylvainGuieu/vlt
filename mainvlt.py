@@ -10,7 +10,6 @@ msgSend_cmd = "msgSend"
 debug = not os.getenv("HOST")  in ["wbeti" , "wpnr" , "wbeaos"]
 
 verbose = 1
-_defaultProcess = None
 
 LASTBUFFER = ""
 DEFAULT_TIMEOUT = None

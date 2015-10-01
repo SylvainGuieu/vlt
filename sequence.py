@@ -2,6 +2,14 @@
 _loop_class = (list, tuple)
 
 def sequence(func, *args, **kwargs):
+    """ built a sequence object on one function
+
+    Args:
+        func : the function to execute
+        *args : function argument if list or tuple they are cycled
+        **kwargs function kwargs, list/ tuple are cycled as well
+
+    """
     return Sequence( (func, args, kwargs), modulo=True )
 def sequences(*m_args, **options):
     return Sequence( *m_args, **options)

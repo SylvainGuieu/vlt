@@ -8,6 +8,9 @@ class Motor(Device):
     and their coresponding cmd method cmdMoveTo, cmdMoveBy, ...
     """
     def _check(self):
+       """ the simple motor device needs these keys to work
+       corectly : "NAME", "ENC", "ENCREL", "INIT", "STOP"
+       """
        self._check_keys(["NAME", "ENC", "ENCREL", "INIT", "STOP"])
 
 

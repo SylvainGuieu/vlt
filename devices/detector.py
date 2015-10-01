@@ -52,7 +52,7 @@ class Detector(Device):
         Same as takeExposure but run it in a sequence, one after the other
         where all individual argument are taken from list.
         The size of the repeat sequence is set by the bigest list, all other
-        smaller list arguments are repeated.
+        smaller list arguments are cycled.
 
         Example:
         det.takeExposure(dit=0.0  , ndit=1000, type="BIAS")
@@ -66,6 +66,9 @@ class Detector(Device):
                             ndit=1000
                             type=["BIAS", "DARK"]
                            )
+
+        see also:
+            sequence
         """
         return sequence(self.takeExposure , *args, **kwargs).go()
 

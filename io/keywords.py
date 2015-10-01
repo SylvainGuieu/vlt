@@ -112,7 +112,8 @@ class KeywordFile(file):
             return
 
         key, value, more = self.match_line(line)
-        more = more.strip()
+        if more:
+            more = more.strip()
 
         if key is None:
             return

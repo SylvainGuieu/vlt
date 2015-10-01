@@ -2,6 +2,7 @@ from .mainvlt import Option, VLTError
 from .config  import config
 import commands
 
+
 msgSend_cmd = config.get("msgSend_cmd", "msgSend")
 
 
@@ -10,10 +11,15 @@ def getProc(proc=None):
 
 _defaultProcess = None
 def setDefaultProcess(proc):
-    """ set the default process for the vlt module """
+    """ set the default process for the vlt module.
+    if process is a string open it with vlt.io.openProcess
+    """
     global _defaultProcess
+    if isinstance(proc, basestring):
+        from .io.cdt import openProcess
+        proc = openProcess(proc)
     if not isinstance(proc, Process):
-        raise ValueError("Expecting a Process got %s"%type(proc))
+        raise ValueError("Expecting a Process object got %s"%type(proc))
     _defaultProcess = proc
 
 
@@ -21,7 +27,7 @@ def getDefaultProcess():
     """ return the default process of the vlt module """
     global _defaultProcess
     if _defaultProcess is None:
-        raise Exception("There is no default process define, use setDefaultProcess to set")
+        raise TypeError("There is no default process define, use setDefaultProcess to set")
     return _defaultProcess
 
 
