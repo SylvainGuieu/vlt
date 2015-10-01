@@ -1,5 +1,5 @@
 from .functiondict import FunctionDict
-from .mainvlt import DEFAULT_TIMEOUT, EmbigousKey
+from .mainvlt import DEFAULT_TIMEOUT, EmbigousKey, cmd
 
 
 class Device(FunctionDict):

@@ -1,4 +1,4 @@
-from ..device import Device
+from ..device import Device, cmd
 from ..sequence import sequence
 
 class Detector(Device):
