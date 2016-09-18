@@ -103,7 +103,10 @@ class KeywordFile(file):
         while len(self.line):
             self.parse_line(self.line)
             self.line = self.readline()
-
+        self.end()
+                    
+    def end(self):
+        pass        
 
     def parse_line(self, line):
         if line is None or not len(line):

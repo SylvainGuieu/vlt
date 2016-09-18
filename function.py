@@ -1,10 +1,81 @@
-
+from __future__ import print_function
 import re
 from .action import Actions
 from .mainvlt import cmd, dotkey, undotkey, vltbool, cmd2str
 from .process import getProc
 from .config import config
+
 KEY_MATCH_CASE = config.get("key_match_case", False)
+
+
+
+def context_format(strin, context, origin=''):
+    """
+    {item} -> context[item]
+    {[item]} -> context[item]
+    {.attr} -> context.attr
+    {item.attr} -> context[item].attr
+    {.attr[item]} -> context.attr[item]
+    {item1[item2]} -> context[item1][item2]
+    {[item1][item2]} -> context[item1][item2]
+
+
+    """
+    origin = origin or strin
+
+    strout = ""
+    for before, field, fmt, q in strin._formatter_parser():
+        strout += before
+        if field is None:
+            continue
+
+        item, path = field._formatter_field_name_split()
+
+        context_value = context
+        if item: # {item} is considered as context[item] here
+            try:
+                context_value = context_value[item]
+            except KeyError:
+                raise KeyError("Error when trying to reformat '%s' : '%s' item no found in context"%(origin, item))
+
+            if isinstance(context_value,Function):
+                context_value = context_value.getValue()
+            if isinstance(context_value, basestring):
+                context_value = context_format(context_value, context, origin)
+
+        for tpe, item in path:
+            if tpe:
+                try:
+                    context_value = getattr(context_value,item)
+                except AttributeError:
+                    raise AttributeError("Error when trying to reformat '%s' : '%s' attribute no found in context"%(origin, item))
+            else:
+                try:
+                    context_value = context_value[item]
+                except KeyError:
+                    raise KeyError("Error when trying to reformat '%s' : '%s' item no found in the path"%(origin, item))
+
+            if isinstance(context_value,Function):
+                context_value = context_value.getValue()
+            if isinstance(context_value, basestring):
+                context_value = context_format(context_value, context, origin)
+
+        strout += format(context_value, fmt)
+    return strout
+
+def context_format_test():
+    class Test(dict):
+        pass
+    context = Test({
+        "a" : "a is {b}",
+        "b" : "b is {c}",
+        "c" : 10,
+        "d" : "d is {.toto:03d}"
+    })
+    context.toto = Function("yo", 9)
+    print (context_format(context["a"], context))
+    print (context_format(context["d"], context))
+
 
 class FunctionMatch(object):
     def __init__(self, indexes, partialy, prefix="", suffix=""):
@@ -159,7 +230,6 @@ class FunctionMsg(object):
         return out
 
     def isIterable(self):
-        #print "AAAAAA", self.keys
         return any(s.isIterable() for s in self.keys)
     def __repr__(self):
         return "'%s'"%self.reform()
@@ -733,7 +803,7 @@ class Function(object):
         """
         Print usefull information about the function
         """
-        print self.infoStr()
+        print (self.infoStr())
 
     def infoStr(self):
         """
@@ -1230,12 +1300,9 @@ class Function(object):
         return self.msg
         return FunctionMsg( dotkey(self.msg) )
 
-    def getMsg(self, context=None, dot=True):
-        if context is not None:
-            msg = self.rebuildMsg(context, fromAttr=True)
-        else:
-            msg = self.msg.reform()
-
+    def getMsg(self, context=None, dot=True):        
+        msg = self._rebuiltMsg(context)
+        
         if dot:
             msg = dotkey(msg)
         else:
@@ -1245,10 +1312,16 @@ class Function(object):
 
 
     def match(self, key, context=None, prefixOnly=False, partialy=True):
-        return self.getFunctionMsg().match(key,
-                                           prefixOnly=prefixOnly,
-                                           partialy=partialy
-                                           )
+
+        if context:
+            fmsg = FunctionMsg(self._rebuiltMsg(context))
+        else:
+            fmsg = self.getFunctionMsg()
+
+        return fmsg.match(key,
+                            prefixOnly=prefixOnly,
+                            partialy=partialy
+                        )
 
     def isIterable(self):
         """ True if Function is iterable, e.i. has "ABCDi" keys likes
@@ -1383,7 +1456,7 @@ class Function(object):
         affect only value already set.
 
         Args:
-        
+
             keyconverter (Optional[function]) : a optional function that convert the
                 original key to an other. The function must take one argument.
 
@@ -1433,9 +1506,9 @@ class Function(object):
 
     getCmd = cmd
 
-    def rebuildMsg( self, replacement=None, fromAttr=True):
+    def _rebuiltMsg(self, context=None):
         """
-        msg = opt.rebuildMsg(replacement)
+        msg = opt._rebuiltMsg(msg, context)
 
         if the message of the opt object is a string of the form "INS.OPT{optnumber}_"
         look for "optnumber" inside the replacement dictionary
@@ -1443,42 +1516,71 @@ class Function(object):
         Also the replacement patern can contain a format separated by a ',' : e.g.  "INS.OPT{optnumber,%04d}"
         Return the value of opt if it is not a string
         """
-        if replacement is None:
-            return self.msg.reform()
+        strin = self.msg.reform()
+        if context is None:
+            return strin 
+        return context_format(strin, context)
 
-        if fromAttr:
-            check = lambda k,r: hasattr(r,k)
-            get   = lambda k,r: r.__getattribute__(k)
-        else:
-            check = lambda k,r: k in r
-            get   = lambda k,r: r[k]
+        # strin = self.msg.reform()
+        # if replacement is None:
+        #     return strin
+
+        # # save some time, if no open bracket return as it is
+        # if not "{" in strin:
+        #     return strin
+
+        # ## make a large list of the same replacement to fool the normal format
+        # ## incrementation
+        # args = [replacement]*99
+        # ## Any key should do the trick.
+        # kwargs = replacement if isinstance(replacement, dict) else {}
+        # if isinstance(replacement, dict) and hasattr(replacement,"toalldict"):
+        #     kwargs = replacement.toalldict(context=replacement, exclude=[self])
+
+        # try:
+
+        #     strout = strin.format(*args,
+        #                           **kwargs
+        #                          )
+        # except (AttributeError, KeyError) as e:
+        #     message = "Problem when reformating '%s' : %s"%(strin, e)
+        #     e.args = (message,)
+        #     raise e
+        # return strout
+        # old stuff. to be removed
+        # if fromAttr:
+        #     check = lambda k,r: hasattr(r,k)
+        #     get   = lambda k,r: r.__getattribute__(k)
+        # else:
+        #     check = lambda k,r: k in r
+        #     get   = lambda k,r: r[k]
 
 
-        strin   = self.msg.reform()
-        matches = re.compile(r'[{]([^}]+)[}]').findall(strin)
-        for key in matches:
-            m = re.compile("[{]"+key+"[}]")
-            f = m.search( strin)
-            if f is not None: # shoudl not be
-                start = strin[0:f.start()]
-                end   = strin[f.end():None]
 
-                sp = key.split(",")
-                if len(sp)>1:
-                    if len(sp)>2:
-                        raise Exception("Error to reformat '%s' must contains only one pair of name,format")
-                    fmt = sp[1]
-                    key = sp[0]
-                else:
-                    fmt = "%s"
+        # matches = re.compile(r'[{]([^}]+)[}]').findall(strin)
+        # for key in matches:
+        #     m = re.compile("[{]"+key+"[}]")
+        #     f = m.search( strin)
+        #     if f is not None: # shoudl not be
+        #         start = strin[0:f.start()]
+        #         end   = strin[f.end():None]
 
-                if not check(key , replacement):
-                    raise Exception("The replacement %s '%s' does not exists to rebuild '%s'"%("attribute" if fromAttr else "key", key,strin))
-                val   = get(key, replacement)
-                valp  = fmt%(val)
-                strin = "%s%s%s"%(start, valp , end)
+        #         sp = key.split(",")
+        #         if len(sp)>1:
+        #             if len(sp)>2:
+        #                 raise Exception("Error to reformat '%s' must contains only one pair of name,format")
+        #             fmt = sp[1]
+        #             key = sp[0]
+        #         else:
+        #             fmt = "%s"
 
-        return strin
+        #         if not check(key , replacement):
+        #             raise Exception("The replacement %s '%s' does not exists to rebuild '%s'"%("attribute" if fromAttr else "key", key,strin))
+        #         val   = get(key, replacement)
+        #         valp  = fmt%(val)
+        #         strin = "%s%s%s"%(start, valp , end)
+
+        # return strin
 
 
     def rebuildVal( self, context, default=False):
@@ -1498,34 +1600,36 @@ class Function(object):
 
     @staticmethod
     def _rebuildVal(strin, context):
-        if not issubclass(type(strin), str):
+        if (not isinstance(strin, basestring)) or (not context):
             return strin
-        strout = ""
-        for before, field, fmt, q in strin._formatter_parser():
-            strout += before
-            if field is None:
-                continue
-            field, others = field._formatter_field_name_split()
 
-            for tp, name  in others:
-                if tp:
-                    field += ".%s" % name
-                else:
-                    break
-            obj = context[field]
+        return context_format(strin, context)     
+        # strout = ""
+        # for before, field, fmt, q in strin._formatter_parser():
+        #     strout += before
+        #     if field is None:
+        #         continue
+        #     field, others = field._formatter_field_name_split()
 
-            for tp, name in others:
-                if tp:
-                    obj = getattr(obj, name)
-                else:
-                    obj = obj[name]
+        #     for tp, name  in others:
+        #         if tp:
+        #             field += ".%s" % name
+        #         else:
+        #             break
+        #     obj = context[field]
 
-            if isinstance(obj, Function):
-                strout += obj.__format__(fmt, context=context)
-            else:
-                strout += obj.__format__(fmt)
+        #     for tp, name in others:
+        #         if tp:
+        #             obj = getattr(obj, name)
+        #         else:
+        #             obj = obj[name]
 
-        return strout
+        #     if isinstance(obj, Function):
+        #         strout += obj.__format__(fmt, context=context)
+        #     else:
+        #         strout += obj.__format__(fmt)
+
+        # return strout
 
     def getFormatedValue(self, value=None, default=False, context=None, index=None):
         self = self._getOrCreate(index)
@@ -1619,7 +1723,7 @@ class Function(object):
         return getProc(proc)
     proc = property(fget=getProc, doc="Function default process")
 
-    def setup(self, value=None, proc=None, **kwargs):
+    def setup(self, value=None, proc=None, function=[], **kwargs):
         """ send setup command to the default or specified process coresponding
         to the keyword/value pair of the Function.
 
@@ -1638,7 +1742,7 @@ class Function(object):
 
         """
         proc = getProc(proc)
-        out = proc.setup(function=self.cmd(value)+kwargs.pop("function",[]), **kwargs)
+        out = proc.setup(function=self.cmd(value)+function, **kwargs)
         self.onSetup.run(self)
         return out
 
@@ -1690,6 +1794,7 @@ class Function(object):
         """
         res = self.status(proc)
         funcdict.update( res )
+        
     def getOrUpdate( self, proc=None):
         """ if the Function has value return it else update from proc and than return
         """

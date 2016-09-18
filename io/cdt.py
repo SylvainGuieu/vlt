@@ -4,11 +4,11 @@ from ..config import config
 from ..function import  Function
 from ..functiondict import FunctionDict
 from ..mainvlt import cmd
+from . import ospath
 
-cdtpath = config["cdtpath"]
-cdtpydir = config["cdtpydir"]
-
-debug = config["cdtdebug"]
+cdtconfig = config["cdt"]
+cdtpydir = cdtconfig["pydir"]
+debug = cdtconfig["debug"]
 
 indentStr = "    "  # python indent string. Do not change that
 
@@ -122,7 +122,7 @@ class Cdt(file):
     """
     indentSize = 4
     indent = 0
-    path = cdtpath
+    
     commands = {}
     cte = {}
 
@@ -312,10 +312,8 @@ class Cdt(file):
         self.cte[line.strip()] =  True
         return self.readline()
 
-    def findIncludeFile( self, fl):
-        for d in self.path:
-            if os.path.exists(d+"/"+fl):
-                return d+"/"+fl
+    def findIncludeFile(self, fl):
+        return ospath.find(fl, defaults=cdtconfig)
 
     def includeLine(self, line):
         inc, ifl = line.split()
@@ -475,22 +473,16 @@ class Cdt(file):
         return self.readline()
 
 
-def findCdtFile(file_name, path=None):
+def findCdtFile(file_name, path=None, prefix=None, extention=None):
     """
     find the cdt file_name inside the path list.
-    by default path list is config["cdtpath"]
+    by default path list is config["cdt"]["path"]
     """
-    path = path or cdtpath
+    return ospath.find(file_name, path=path, prefix=prefix, 
+                     extention=extention, defaults=cdtconfig
+                    )
 
-    for directory in path:
-        if os.path.exists(directory+"/"+file_name):
-
-            return directory+"/"+file_name
-
-    raise ValueError("cannot find file {0} in any of the path: {1}".format(file_name, path))
-
-
-def processClass(processname, path=None):
+def processClass(processname, path=None, prefix=None, extention=None):
     """
     Return the dynamicaly created python class of a process
 
@@ -498,17 +490,19 @@ def processClass(processname, path=None):
     directories wich can be set by the path= keyword.
     By default config["cdtpath"] is used
     """
-
-    fileName = findCdtFile(processname+".cdt", path)
+    fileName = findCdtFile(processname, path=path, prefix=prefix, 
+                            extention=extention)
     pycode = Cdt(fileName).parse2pycode()
 
     exec pycode
     # the pycode should contain the variable proc
     # witch is the newly created object
+    # and cls for the class 
     return cls
 
 
-def openProcess(processname, path=None):
+def openProcess(processname, path=None, prefix=None, 
+                            extention=None):
     """
     return processClass(processname, path)()
 
@@ -517,7 +511,8 @@ def openProcess(processname, path=None):
       pnoc.setup( function="INS.MODE ENGENIERING DET.DIT 0.01" )
 
     """
-    return processClass(processname, path)()
+    return processClass(processname, path=path, prefix=prefix, 
+                                     extention=extention)()
 
 
 _cmd2ClassDef_str = """

@@ -234,11 +234,11 @@ class DM(Device):
     def getNzern(self):
         return self.allfunctions["AOS.ZERNS"].getOrUpdate(proc=self.proc)
 
-    def status(self, keylist=None):
-        return self.functions.status(keylist, proc=self.proc)
+    def status(self, statusItems=None):
+        return self.functions.status(statusItems, proc=self.proc)
 
-    def statusUpdate(self, keylist=None):
-        return self.functions.statusUpdate(keylist, proc=self.proc)
+    def statusUpdate(self, statusItems=None):
+        return self.functions.statusUpdate(statusItems, proc=self.proc)
 
 
     def getActStatus(self, nums=None, indict=None):

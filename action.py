@@ -3,7 +3,7 @@ class Actions(object):
     def __init__(self, *args, **kw):
         parent = kw.pop("parent",None)
         if len(kw):
-            raise KeyError("Actions take only parent has keyword")
+            raise KeyError("Actions take only 'parent' has keyword")
 
         self.actions = {}
         self.actionCounter = 0

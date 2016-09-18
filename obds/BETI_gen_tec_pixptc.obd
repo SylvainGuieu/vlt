@@ -1,0 +1,48 @@
+#*******************************************************************************
+# E.S.O. - VLT project
+#
+# "@(#) $Id$"
+#
+# who       when        what
+# --------  ----------  ----------------------------------------------
+# betimgr   2015-03-11  created.
+#
+
+PAF.HDR.START;
+PAF.TYPE                "ObsBlockDescription";     # Type of PAF
+PAF.ID                  "";                        # ID of PAF
+PAF.NAME                "";                        # Name of PAF
+PAF.DESC                "";                        # Short description of PAF
+PAF.CRTE.NAME           "tpltooBuild";             # Name of creator
+PAF.CRTE.DAYTIM         "2015-03-11T16:54:06.00";  # Civil time for creation
+PAF.LCHG.NAME           "betimgr";                 # Name of person/appl. chg.
+PAF.LCHG.DAYTIM         "2015-03-11T16:54:06.00";  # Timestamp of last change
+PAF.CHCK.NAME           "";                        # Name of appl. checking
+PAF.CHCK.DAYTIM         "";                        # Time for checking
+PAF.CHCK.CHECKSUM       "";                        # Checksum for the PAF
+PAF.HDR.END;
+
+# --------------------------------------------------------------------
+OBS.ID                  "-1";                      # Observation block ID
+OBS.NAME                "Maintenance";             # OB name
+OBS.GRP                 "0";                       # linked blocks
+OBS.PROG.ID             "Maintenance";             # ESO program identification
+OBS.PI-COI.ID           "0";                       # ESO internal PI-COI ID
+OBS.PI-COI.NAME         "Condor";                  # PI-COI name
+
+TPL.ID                  "BETI_gen_tec_pixptc";
+TPL.NAME                "Detector Photon Transfert Curve";
+DET.DIT                 "0.0005";
+DET.NDIT                "1000";
+DET.POLAR               "0";
+SEQ.DELAY               "0";
+SEQ.NEXPO               "1";
+SEQ.SHUT1.LIST          "F T F F F";
+SEQ.SHUT2.LIST          "F F T F F";
+SEQ.SHUT3.LIST          "F F F T F";
+SEQ.SHUT4.LIST          "F F F F T";
+DPR.CATG                "TEST";
+
+
+#___oOo___
+

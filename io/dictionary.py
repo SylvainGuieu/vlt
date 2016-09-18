@@ -3,8 +3,11 @@ from ..function import Function
 from ..functiondict import FunctionDict
 from ..config import config
 from ..mainvlt import formatBoolFunction
+from . import ospath
 import os
 import numpy as np
+
+dictionaryconfig = config['dictionary']
 
 def _new_parameter(f, key, value, more):
     if f.in_header:
@@ -103,30 +106,20 @@ def parameter2function(key, param, cls=Function):
 def parameters2functiondict(params, cls=FunctionDict):
     return cls({key:parameter2function(key, param) for key,param in params.iteritems()})
 
-def findDictionaryFile(dictsufix, path=None, fileprefix=None):
+def findDictionaryFile(dictsufix, path=None, prefix=None, extention=None):
     """ look for the coresponding dictionary file in the path list
-    default path list is dictionarypath in vlt.config
+        default path list is dictionarypath in vlt.config
 
     keywords
     --------
     fileprefix = "ESO-VLT-DIC."
     """
-    fileprefix = fileprefix or config["dictionaryprefix"]
-    path = path or config["dictionarypath"]
-
-    if dictsufix[0:len(fileprefix)] == fileprefix:
-        # the full file name is given
-        fileprefix = ""
-
-    for d in path:
-        p = d+"/"+fileprefix+dictsufix
-        if os.path.exists(p):
-            return p
-    raise ValueError("cannot find file {} in any of the path {}".format(fileprefix+dictsufix,path))
-
-
-def readDictionary(dictionary_name, path=None):
-    file_name = findDictionaryFile(dictionary_name, path=path)
+    return ospath.find(dictsufix, path=path, prefix=prefix, 
+                       extention=extention, defaults=dictionaryconfig)
+    
+def openDictionary(dictionary_name, path=None,  prefix=None, extention=None):
+    file_name = findDictionaryFile(dictionary_name, path=path,prefix=prefix, 
+                                   extention=extention )
     f = Dictionary(file_name)
     f.parse()
     return parameters2functiondict(f.parameters)

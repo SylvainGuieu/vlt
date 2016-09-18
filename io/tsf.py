@@ -1,5 +1,13 @@
 import re
 from .keywords import KeywordFile
+from ..config import config
+from ..template import TemplateSignature
+
+from . import ospath
+import os
+
+# opened ISF_FILE
+ISF_PARAMS = None
 
 def _start_header(f, key, value, more):
         f.start_header()
@@ -84,6 +92,37 @@ class TSF(KeywordFile):
 class ISF(TSF):
     # same as TSF except that value are stacked in a flat dictionary
     value_keys = {}
+
     def key2path(self, key):
         return [key]
+
+def findTemplateSignatureFile(file_name, path=None,  prefix=None, extention=None):
+    """
+    find the tsf file_name inside the path list.
+    by default path list is config["tsfpath"]
+    """
+    return ospath.find(file_name, path=path, prefix=prefix, extention=extention, 
+                        defaults=config['tsf']
+                       )
+   
+def openTemplateSignature(file_name, path=None, prefix=None, extention=None):
+    global ISF_PARAMS    
+    if ISF_PARAMS is None and config.get("isffile", None):
+        isf = ISF(config.get("isffile", None))
+        isf.parse()
+        ISF_PARAMS = isf.parameters
+
+    tsffile = findTemplateSignatureFile(file_name, path=path, prefix=prefix, 
+                                        extention=extention)        
+    f = TSF(tsffile, isf=ISF_PARAMS)
+    f.parse()    
+
+    return TemplateSignature.from_dict(f.parameters,f.header)        
+
+
+        
+
+
+
+
 

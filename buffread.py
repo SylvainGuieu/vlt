@@ -1,5 +1,16 @@
+"""
+Define the Buffreader class.
+"""
 
 class Buffreader(object):
+    """ 
+    Buffreader class provide functions to read buffer. 
+    All buffer reader function can take only one argument, the string buffer
+    and return any object that reflect what is in the buffer.
+    For instance the reader status (Which correspond to the process STATUS command) return 
+        a dictionary of key/value pair dictionary reflecting the status. 
+
+    """
     def getreader(self,cmd):
         cmd = cmd.lower()
         if cmd in self.__class__.__dict__:

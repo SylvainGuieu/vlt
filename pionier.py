@@ -1,5 +1,5 @@
 from __future__ import print_function
-from vlt import processClass, devices, EmbigousKey
+from vlt import processClass, devices
 from vlt.io import readDictionary
 
 def log(*msg, **kwargs):
@@ -50,23 +50,23 @@ allf = acs + aos + cfg + dcs + ics + os + dpr + osb
 ####
 # Add the 4 shuters
 shutters = devices.Shutters([devices.Shutter(ics.restrict("INS.SHUT%d"%i),
-                                  statusKeys=[""]) for i in range(1, 5)])
+                                  statusItems=[""]) for i in range(1, 5)])
 shut1, shut2, shut3, shut4 = shutters
 
 ####
 # dispersion motor
-disp = devices.Motor(ics.restrict("INS.OPTI3"), statusKeys=[""])
+disp = devices.Motor(ics.restrict("INS.OPTI3"), statusItems=[""])
 
 ####
 # Detector
 # needs the DET. keywords plus some extras
 class PionierDetector(devices.Detector):
-    def statusUpdate(self, keylist=None, proc=None):
+    def statusUpdate(self, statusItems=None, proc=None):
         super(PionierDetector, self).statusUpdate()
-        if keylist is None:
-            keylist = self.statusKeys
+        if statusItems is None:
+            statusItems = self.statusItems
 
-        if "SUBWINS" in keylist and self["SUBWINS"].hasValue():
+        if "SUBWINS" in statusItems and self["SUBWINS"].hasValue():
             subs_status = []
             for i in range(1, self["SUBWINS"].getValue()+1):
                 subs_status.expend(
@@ -83,7 +83,7 @@ det = PionierDetector(
                        dpr+
                        osb.restrict("OCS.DET")+
                        ics.restrict([("INS.MODE", "MODE")]),
-                       statusKeys=["DIT", "NDIT", "POLAR", "SUBWINS"]
+                       statusItems=["DIT", "NDIT", "POLAR", "SUBWINS"]
                        )
 ##
 # To remove some keyword embiguities

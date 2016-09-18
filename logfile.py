@@ -80,7 +80,6 @@ class LogFile(file):
     fmatch = None
 
     def fparse(self, key, val):
-        print key, val, type(self.guesstype(val))
         return self.guesstype(val)
 
     def info2date(self, info):

@@ -5,14 +5,14 @@ from .mainvlt import DEFAULT_TIMEOUT, EmbigousKey, cmd
 class Device(FunctionDict):
     """ Device object is subclasse from a FunctionDict object with additional
     usefull methods dedicated to the device e.g. move, close, takeExposure,...
-
+    
 
     """
-    def __init__(self, fdict, statusKeys=None, proc=None):
+    def __init__(self, fdict, statusItems=None, proc=None):
         FunctionDict.__init__(self, fdict)
 
-        if statusKeys is not None:
-            self.statusKeys = statusKeys
+        if statusItems is not None:
+            self.statusItems = statusItems
         self._check()
         if proc:
             self.proc = proc

@@ -7,7 +7,7 @@ to the non-vtl-software expert a way to script VLT instruments.
 Main capabilities are:
 
 Process
--------
+=======
   You can open a 'process' to send command (based on the msgSend unix command)
   The process object are dynamicaly created from instrument CDT file.
   e.g. (on PIONIER):
@@ -21,8 +21,9 @@ Process
                                       # Functions (see below)
 
 Dictionary/Function
--------------------
- * Function
+===================
+Function
+--------
 
   What we call here Function (also called Keyword in VLTSW) are objects
   containing a keyword/value pair plus extra stuff like unit, context,
@@ -69,7 +70,8 @@ Dictionary/Function
 
 
 
-  * FunctionDict
+FunctionDict
+------------
 
   FunctionDict() objects are dictionary of Function() object.
   They are basically a collection of keyword/pair values with fast search
@@ -123,7 +125,7 @@ Devices
   Example to create/use a device, on Pionier:
      >>> pnoc = vlt.openProcess("pnoControl")
      >>> ics = vlt.readDictionary("PIONIER_ICS")
-     >>> dispersor = vlt.devices.Motor(ics.restrict("INS.OPTI3"), statusKeys=[""], proc=pnoc)
+     >>> dispersor = vlt.devices.Motor(ics.restrict("INS.OPTI3"), statusItems=[""], proc=pnoc)
      # (proc can be also the default process vlt.setDefaultProcess(pnoc) )
 
      >>> dispersor.statusUpdate() # ask the instrument and update values
@@ -150,7 +152,7 @@ from .sequence import sequence, sequences
 
 from . import devices
 
-from io import openProcess, processClass, readDictionary
+from io import openProcess, processClass, openDictionary
 
 
 
