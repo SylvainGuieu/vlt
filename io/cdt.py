@@ -5,6 +5,7 @@ from ..function import  Function
 from ..functiondict import FunctionDict
 from ..mainvlt import cmd
 from . import ospath
+from collections import OrderedDict
 
 cdtconfig = config["cdt"]
 cdtpydir = cdtconfig["pydir"]
@@ -338,10 +339,10 @@ class Cdt(file):
     def parameterListStart(self, paramkey):
         if debug:
             self.debug +=  [">>> Starting parameter list"]
-        self.curentCommand[paramkey] = {}
+        self.curentCommand[paramkey] = OrderedDict()
         self.curentParameters = self.curentCommand[paramkey]
         return self.parameterStart(self.readline())
-
+        
     def parameterListEnd(self, line):
         if debug:
             self.debug +=  [">>> ending parameter list"]

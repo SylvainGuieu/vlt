@@ -127,6 +127,7 @@ class Process(object):
 
     def msgSend(self, command, options=None, timeout=None, environment=None):
         global LASTBUFFER
+        
         options = options or {}
         cmdLine = self.cmdMsgSend(command, options, timeout=timeout, environment=environment)
         if self.getVerbose():
