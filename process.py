@@ -86,7 +86,7 @@ class Process(object):
     _verbose = config.get("verbose",1)
     msg = ""
 
-    def __init__(self, msg=None, commands=None, doubleQuote=False):
+    def __init__(self,  msg=None, environment="", commands=None, doubleQuote=False):
         commands = commands or {}
 
         for k,cmd in commands.iteritems():
@@ -96,6 +96,7 @@ class Process(object):
 
         if msg is not None:
             self.msg = msg
+        self._environment = environment            
         self.doubleQuote = doubleQuote
         self.msgSend_cmd = msgSend_cmd
     def setVerbose(self, val):
@@ -107,6 +108,10 @@ class Process(object):
         return self._debug
     def getVerbose(self):
         return self._verbose
+    def getEnvironment(self):
+        return self._environment
+    def setEnvironment(self, environment):
+        self._environment = environment            
 
     def cmd(self, command, options=None, timeout=config.get("timeout",None)):
         options = options or {}
@@ -115,14 +120,15 @@ class Process(object):
         cmd = self.commands[command]
         return _timeout_( "%s %s"%(self.msg, cmd.cmd(options)), timeout)
 
-    def cmdMsgSend(self, command, options=None, timeout=config.get("timeout",None)):
+    def cmdMsgSend(self, command, options=None, timeout=config.get("timeout",None), environment=None):
         options = options or {}
-        return _timeout_("""%s "" %s"""%(self.msgSend_cmd, self.cmd(command,options)), timeout)
+        environment = self._environment or environment
+        return _timeout_("""%s "%s" %s"""%(self.msgSend_cmd, environment, self.cmd(command,options)), timeout)
 
-    def msgSend(self, command, options=None, timeout=None):
+    def msgSend(self, command, options=None, timeout=None, environment=None):
         global LASTBUFFER
         options = options or {}
-        cmdLine = self.cmdMsgSend(command, options, timeout=timeout)
+        cmdLine = self.cmdMsgSend(command, options, timeout=timeout, environment=environment)
         if self.getVerbose():
             print cmdLine
 
