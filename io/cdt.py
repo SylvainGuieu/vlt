@@ -589,7 +589,10 @@ proc.help() will return help for every commands
     return _dict2py_str.format(**dict(globals().items()+locals().items()))
 
 def keyCommandMaker(command):
-    return command.lower()
+    command = command.lower()
+    if command in ["in", "as", "if", "or", "and", "with", "break", "continue", "for", "while", "class", "def", "print"]:
+        return command.capitalize()
+    return command
 
 def keyOptionMaker(option):
     return option
@@ -643,7 +646,11 @@ def dict2pyCommands(commands, indent=0):
 
 
 def dict2pyCommand(command, data, keyMakerFunc=keyCommandMaker, indent=0):
-    return '%s"%s"\t:%sCommand("%s",%s,helpText="""%s""", bufferReader=%s.getreader("%s"))'%(indentStr*indent, keyMakerFunc(command), vltModulePref, command, dict2pyOptions(data.get("PARAMETERS",{}), cmd=command), data.get("HELP_TEXT", ""), buffreadClassName , command)
+    return '%s"%s"\t:%sCommand("%s",%s,helpText="""%s""", bufferReader=%s.getreader("%s"))'%(
+        indentStr*indent, 
+        keyMakerFunc(command), vltModulePref, command, 
+        dict2pyOptions(data.get("PARAMETERS",{}), cmd=command), 
+        data.get("HELP_TEXT", ""), buffreadClassName , command)
 
 
 def dict2pyOptions(options, indent=0, cmd=""):
