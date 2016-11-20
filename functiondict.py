@@ -1144,7 +1144,7 @@ class FunctionDict(dict):
         """
         values = _values_ or {}
         values.update(kwargs)
-        return self.cmd(values, False, include=_include_)
+        return self.cmd(values, include=_include_)
 
     def setup(self, values=None, include=None,
               withvalue=True, default=False, context=None,
