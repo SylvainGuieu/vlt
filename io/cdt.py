@@ -19,6 +19,10 @@ indentStr = "    "  # python indent string. Do not change that
 
 
 vltModuleImport = """from vlt.process import Process, Param, Command;from vlt.mainvlt import formatBoolCommand"""
+
+generalMouleImport ="""
+from collections import OrderedDict
+"""
 vltModulePref   = ""  # The prefix for vlt module, used to call vlt functions
 
 cdtModuleImport = "from vlt.io import cdt"
@@ -45,11 +49,16 @@ typeExeption = {
 }
 
 def msg_send_decorator(msg, commands):
-    def tmp(self, timeout=None, **kwargs):
-        return self.msgSend(msg, kwargs, timeout=timeout)
+    options = commands[msg].options
+    def tmp(self, *args, **kwargs):
+        for arg, option in zip(args,options):
+            if option in kwargs:
+                raise TypeError("got multiple values for keyword argument '%s'"%option)
+            kwargs[option] = arg    
+        timeout = kwargs.pop("timeout", None)        
+        return self.msgSend(msg, kwargs, timeout=timeout)            
     tmp.__doc__ = form_cmd_help(msg,commands[msg])
     return tmp
-
 
 def form_cmd_help(msg,command):
     return msg+"("+" ,".join(k+"=%s"%o.dtype for k,o in command.options.iteritems())+")\n\n"+command.helpText
@@ -549,6 +558,7 @@ def _wrf(nm, p):
 
 
 _dict2py_str = """
+{generalMouleImport}
 {vltModuleImport}
 {cdtModuleImport}
 class {className}({derived}):
@@ -643,11 +653,11 @@ def dict2pyCommands(commands, indent=0):
     """ convert a commands dictionary as parsed by Cdt object
     to a python code Command definition.
     """
-    return "{\n"+(",\n".join([dict2pyCommand(k, cmd, indent=indent+1) for k,cmd in commands.iteritems()  ] ))+"}"
+    return "OrderedDict([\n"+(",\n".join([dict2pyCommand(k, cmd, indent=indent+1) for k,cmd in commands.iteritems()  ] ))+"])"
 
 
 def dict2pyCommand(command, data, keyMakerFunc=keyCommandMaker, indent=0):
-    return '%s"%s"\t:%sCommand("%s",%s,helpText="""%s""", bufferReader=%s.getreader("%s"))'%(
+    return '%s("%s"\t,%sCommand("%s",%s,helpText="""%s""", bufferReader=%s.getreader("%s")))'%(
         indentStr*indent, 
         keyMakerFunc(command), vltModulePref, command, 
         dict2pyOptions(data.get("PARAMETERS",{}), cmd=command), 
@@ -656,8 +666,8 @@ def dict2pyCommand(command, data, keyMakerFunc=keyCommandMaker, indent=0):
 
 def dict2pyOptions(options, indent=0, cmd=""):
     #return [dict2pyOption(k,opt) for k,opt in options.iteritems()  ]
-    return indentStr*indent+"{"+(",".join([dict2pyOption(k,opt,cmd=cmd) for k,opt in options.iteritems()  ] ))+"}"
+    return indentStr*indent+"OrderedDict(["+(",".join([dict2pyOption(k,opt,cmd=cmd) for k,opt in options.iteritems()  ] ))+"])"
 
 
 def dict2pyOption(name, option, cmd=""):
-    return """"%s":%sParam("%s", %s, %s)""" % (keyOptionMaker(name),vltModulePref,scripOptionMaker(name), type2py(option.get('TYPE',"str"), name, cmd), type2pyFormat(option.get("TYPE",'"%s"')))
+    return """("%s",%sParam("%s", %s, %s))""" % (keyOptionMaker(name),vltModulePref,scripOptionMaker(name), type2py(option.get('TYPE',"str"), name, cmd), type2pyFormat(option.get("TYPE",'"%s"')))
