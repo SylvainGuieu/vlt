@@ -91,5 +91,88 @@ class Buffreader(object):
             return (buf, None)
         return tuple(sbuf)
 
+
+    def error_structure(self, buf):
+        """ read the error strcuture returned by e.g, msgSend """    
+        pass
+
+
+def paramproperty(k):
+    def prop(self):
+        return self.parameters.get(k, None)
+    return property(prop)
+
+class ErrorStructure(object):
+    ##
+    # read the line entirely for the following keywords
+    _fulllines = ["Time Stamp", "Error Text", "Location"]
+    ## 
+    # keyword types, unknown will be str
+    _types = {
+        "Process Number":int, 
+        "Error Number":int,
+        "StackId": int, 
+        "Sequence": int
+    }
+    def __init__(self, buffer):
+        self.parameters = {}
+        lines = [l for l in buffer.split("\n") if l.strip()]
+        for line in lines:
+            self._read_line(line.strip())
+        self.origin = buffer    
+
+    def _read_line(self, line):        
+        if line[:2] == "--": # ignore ---------------- Error Structure -----------------
+            return 
+
+        key, _, val  = line.partition(":")
+        key = key.strip()
+        if not key:
+            return 
+
+        val = val.strip()
+
+        if key in self._fulllines:
+            self.parameters[key] = val
+            return 
+        val, _, rest = val.partition(" ")
+        val = val.strip()
+        rest = rest.strip()
+
+        tpe = self._types.get(key, str)
+        self.parameters[key] = tpe(val)
+        if rest:
+            return self._read_line(rest)
+        return None
+             
+    TimeStamp = paramproperty("Time Stamp")        
+    ProcessNumber = paramproperty("Process Number")
+    ProcessName = paramproperty("Process Name")
+    Environment = paramproperty("Environment")
+    StackId = paramproperty("StackId")
+    Sequence = paramproperty("Sequence")
+    ErrorNumber = paramproperty("Error Number")
+    Severity = paramproperty("Severity")
+    Module = paramproperty("Module")
+    Location = paramproperty("Location")
+    ErrorText = paramproperty("Error Text") 
+    
+    def __repr__(self):
+        return """
+ ---------------- Error Structure ----------------
+Time Stamp     : {0.TimeStamp}    
+Process Number : {0.ProcessNumber}       Process Name : {0.ProcessName}            
+Environment    : {0.Environment}   StackId  : {0.StackId}      Sequence : {0.Sequence}
+Error Number   : {0.ErrorNumber}       Severity : {0.Severity}
+Module         : {0.Module}      Location : {0.Location}
+Error Text     : {0.ErrorText}
+""".format(self)
+
+
+
+
+
+
+
 buffreader  = Buffreader()
 

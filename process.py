@@ -1,5 +1,6 @@
 from .mainvlt import Option, VLTError
 from .config  import config
+from .buffread import ErrorStructure
 import commands
 import subprocess
 
@@ -144,12 +145,28 @@ class Process(object):
         ###
         ## Warning shell=True can represent some danger
         ## we need to split the command line into arge and options and make shell=False     
-        p = subprocess.Pipe(cmdLine, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        p = subprocess.Popen(cmdLine, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         status = p.wait()
         if status:
-            raise VLTError("msgSend reseived error %d\nSTDERR:\n"%(status,p.stderr.read()))
-        output = p.stdout.read()    
+            raise VLTError.from_pipe("msgSend", p)
+            # stdout = p.stdout.read()
+            # stderr = p.stderr.read()
+            # e = VLTError("msgSend reseived error %d\nSTDERR:\n%s\nSTDOUT:\n%s\n"%(status,stderr,stdout))
+            # try:
+            #     errorStructure = ErrorStructure(stdout)
+            # except:
+            #     pass
+            # else:
+            #     e.errorStructure = errorStructure
 
+            # ## put the stdout and stderr in the Exception class for 
+            # ## eventual smart catch
+            # e.stdout = stdout
+            # e.stderr = stderr
+            # raise e
+                    
+        output = p.stdout.read()    
+        
         # status, output = commands.getstatusoutput(cmdLine)
         # if status:
         #     raise VLTError("msgSend reseived error %d"%status)

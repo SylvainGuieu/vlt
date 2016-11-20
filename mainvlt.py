@@ -4,7 +4,7 @@ import os
 import re
 
 from .config import config
-
+from .buffread import ErrorStructure
 
 msgSend_cmd = "msgSend"
 debug = not os.getenv("HOST")  in ["wbeti" , "wpnr" , "wbeaos"]
@@ -123,7 +123,36 @@ class EmbigousKey(KeyError):
 
 
 class VLTError(Exception):
-    pass
+    errorStructure = None
+    stdout = ""
+    stderr = ""
+
+    @classmethod
+    def from_stdout(cl, msg, stdout):
+        e = cl(msg)
+        if "Error Structure" in stdout:
+            try:
+                e.errorStructure = ErrorStructure(stdout)
+            except:
+                pass
+        e.stdout = stdout                
+        return e
+
+    @classmethod
+    def from_pipe(cl, cmd, pipe)
+        stdout = pipe.stdout.read()
+        stderr = pipe.stderr.read()
+        status = pipe.returncode
+        e = cl("%s reseived error %d\nSTDERR:\n%s\nSTDOUT:\n%s\n"%(cmd,status,stderr,stdout))
+        if "Error Structure" in stdout:
+            try:
+                e.errorStructure = ErrorStructure(stdout)
+            except:
+                pass
+        e.stdout = stdout 
+        e.stderr = stderr
+        return e
+        
 
 
 def cmd2Option(msg,fromdict=None):
