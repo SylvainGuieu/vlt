@@ -1,8 +1,7 @@
 from .mainvlt import Option, VLTError
 from .config  import config
 from .buffread import ErrorStructure
-import commands
-import subprocess
+from  subprocess import Popen, PIPE
 
 
 msgSend_cmd = config.get("msgSend_cmd", "msgSend")
@@ -122,9 +121,9 @@ class Process(object):
         cmd = self.commands[command]
         return _timeout_( "%s %s"%(self.msg, cmd.cmd(options)), timeout)
 
-    def cmdMsgSend(self, command, options=None, timeout=config.get("timeout",None), environment=""):
+    def cmdMsgSend(self, command, options=None, timeout=config.get("timeout",None), environment=None):
         options = options or {}
-        environment = self._environment or environment
+        environment = self._environment if environment is None else environment
         return _timeout_("""%s "%s" %s"""%(self.msgSend_cmd, environment, self.cmd(command,options)), timeout)
 
     def msgSend(self, command, options=None, timeout=None, environment=None):
@@ -145,7 +144,7 @@ class Process(object):
         ###
         ## Warning shell=True can represent some danger
         ## we need to split the command line into arge and options and make shell=False     
-        p = subprocess.Popen(cmdLine, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        p = Popen(cmdLine, shell=True, stdout=PIPE, stderr=PIPE)
         status = p.wait()
         if status:
             raise VLTError.from_pipe("msgSend", p)

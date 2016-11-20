@@ -1,5 +1,6 @@
 """
-Configuration file of the vlt package. to be changed with cautions
+Configuration file of the vlt package. to be changed with a lot of cautions
+some configuration can be changed 
 """
 import os
 
@@ -10,9 +11,9 @@ INSROOT  = INS_ROOT
 VLTROOT  = os.getenv("VLTROOT") or ""
 DPR_ID   = os.getenv("DPR_ID") or ""
 VLTDATA  = os.getenv("VLTDATA") or ""
+HOST = os.getenv("HOST") or ""
 
-
-config = {
+config = {    
     # list of directories/prefix/sufix/extention for the CDT files
     "cdt":{
         ## List of path from where to find cdt files
@@ -26,7 +27,7 @@ config = {
         #  boolean value for cdt debug
         "debug":False
     }, 
-
+    
     "dictionary": {
         # list of directories containing the dictionary files
         "path": [os.path.join(INS_ROOT, "SYSTEM/Dictionary"),
@@ -71,5 +72,5 @@ config = {
 # config["dictionarypath"] += ["/Users/guieu/python/vlt/Dictionary",
 #                             "/Users/guieu/python/vlt/Dictionary/CCSLite"
 #        ]
-config["debug"] = not os.getenv("HOST")  in ["wbeti" , "wpnr" , "wbeaos"]
+#config["debug"] = not os.getenv("HOST")  in ["wbeti" , "wpnr" , "wbeaos"]
 
