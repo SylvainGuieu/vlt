@@ -498,7 +498,7 @@ def processClass(processname, path=None, prefix=None, extention=None):
 
     The program look for the file processname.cdt into the list of path
     directories wich can be set by the path= keyword.
-    By default config["cdtpath"] is used
+    By default config['cdt']['path'] is used
     """
     fileName = findCdtFile(processname, path=path, prefix=prefix, 
                             extention=extention)
@@ -511,19 +511,30 @@ def processClass(processname, path=None, prefix=None, extention=None):
     return cls
 
 
-def openProcess(processname, path=None, prefix=None, 
+def openProcess(processname, environment="", path=None, prefix=None, 
                             extention=None):
     """
     return processClass(processname, path)()
+        
+    Prameters
+    ---------
+    processname: string 
+        the process name (without '.cdt' extention)
+    environment: string, optional
+        The envirnoment name used for the process 
 
-    e.g.:
+    path: list, optionale
+        list of path where to find the '.cdt' files, default is config['cdt']['path']
+        
+    Example
+    -------
       pnoc = openProcess("pnoControl")
       pnoc.setup( function="INS.MODE ENGENIERING DET.DIT 0.01" )
-
+    
     """
     return processClass(processname, path=path, prefix=prefix, 
-                                     extention=extention)()
-
+                        extention=extention)(environment=environment)
+                          
 
 _cmd2ClassDef_str = """
 {idt}def {name}(self, **kwargs):

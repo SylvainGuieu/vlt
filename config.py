@@ -9,6 +9,8 @@ INS_ROOT = os.getenv("INS_ROOT") or ""
 INSROOT  = INS_ROOT
 VLTROOT  = os.getenv("VLTROOT") or ""
 DPR_ID   = os.getenv("DPR_ID") or ""
+VLTDATA  = os.getenv("VLTDATA") or ""
+
 
 config = {
     # list of directories/prefix/sufix/extention for the CDT files

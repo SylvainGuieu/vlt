@@ -1,6 +1,7 @@
 from .mainvlt import Option, VLTError
 from .config  import config
 import commands
+import subprocess
 
 
 msgSend_cmd = config.get("msgSend_cmd", "msgSend")
@@ -120,14 +121,14 @@ class Process(object):
         cmd = self.commands[command]
         return _timeout_( "%s %s"%(self.msg, cmd.cmd(options)), timeout)
 
-    def cmdMsgSend(self, command, options=None, timeout=config.get("timeout",None), environment=None):
+    def cmdMsgSend(self, command, options=None, timeout=config.get("timeout",None), environment=""):
         options = options or {}
         environment = self._environment or environment
         return _timeout_("""%s "%s" %s"""%(self.msgSend_cmd, environment, self.cmd(command,options)), timeout)
 
     def msgSend(self, command, options=None, timeout=None, environment=None):
         global LASTBUFFER
-        
+
         options = options or {}
         cmdLine = self.cmdMsgSend(command, options, timeout=timeout, environment=environment)
         if self.getVerbose():
@@ -140,13 +141,30 @@ class Process(object):
             LASTBUFFER = "DEBUG: %s"%(cmdLine)
             return objout
 
-        status, output = commands.getstatusoutput(cmdLine)
+        ###
+        ## Warning shell=True can represent some danger
+        ## we need to split the command line into arge and options and make shell=False     
+        p = subprocess.Pipe(cmdLine, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        status = p.wait()
         if status:
-            raise VLTError("msgSend reseived error %d"%status)
+            raise VLTError("msgSend reseived error %d\nSTDERR:\n"%(status,p.stderr.read()))
+        output = p.stdout.read()    
+
+        # status, output = commands.getstatusoutput(cmdLine)
+        # if status:
+        #     raise VLTError("msgSend reseived error %d"%status)
 
         LASTBUFFER = output
         objOutput = self.commands[command].readBuffer(output)
         return objOutput
+                
+        # status, output = commands.getstatusoutput(cmdLine)
+        # if status:
+        #     raise VLTError("msgSend reseived error %d"%status)
+
+        # LASTBUFFER = output
+        # objOutput = self.commands[command].readBuffer(output)
+        # return objOutput
 
 
     def help(self,command=None):
