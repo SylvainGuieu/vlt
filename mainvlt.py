@@ -139,7 +139,7 @@ class VLTError(Exception):
         return e
 
     @classmethod
-    def from_pipe(cl, cmd, pipe)
+    def from_pipe(cl, cmd, pipe):
         stdout = pipe.stdout.read()
         stderr = pipe.stderr.read()
         status = pipe.returncode
