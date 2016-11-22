@@ -154,9 +154,9 @@ class FunctionDict(dict):
     def __contains__(self,item):
         if super(FunctionDict, self).__contains__(item):
             return True
-
+        
         context = self.getContext()
-            
+                    
         keys = FunctionMsg(dotkey(item))
         for f in self.itervalues():
             if f.match(keys, context=context):
@@ -568,8 +568,7 @@ class FunctionDict(dict):
         Parameters
         ----------
         context : any object, optional 
-            An alternative context, if not None, that him which
-            will be returned 
+            An alternative context, if not None
 
         Returns:
         context : any object 
@@ -1101,15 +1100,13 @@ class FunctionDict(dict):
         """
         if values:
             self = self.copy(True)
-            for k,f in values:
+            for k,f in dict(values).iteritems():
                 self[k] = f
         else:
             values = {}    
         
-
         context = self.getContext(context)
-        
-                
+                        
         out = []
         funcs = []
         for k in values:

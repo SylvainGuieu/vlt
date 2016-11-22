@@ -142,6 +142,12 @@ Devices
 
 
 """
+from .config import (config, INTROOT,
+                     INS_ROOT,INSROOT, VLTROOT, 
+                     DPR_ID,  VLTDATA, HOST
+                     )
+
+
 import mainvlt as vlt
 from process import setDefaultProcess, getDefaultProcess
 from mainvlt import EmbigousKey,  cmd, dotkey, undotkey
