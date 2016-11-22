@@ -5,7 +5,7 @@ class Lamp(Device):
        corectly : "ST"
        """
        self._check_keys(["", "ST"])
-       
+
     def cmd_turnOn(self):
     	return self['ST'].cmd(True, context=self)
 
@@ -19,6 +19,11 @@ class Lamp(Device):
     	return self.getProc(proc).setup(function=self.cmd_turnOff())	
     
     def getStatus(self, proc=None):
-    	return self[""].status(proc=self.getProc(proc))
+    	response = self.status(proc=self.getProc(proc))
+		try:
+			status  = response["ST"]
+		except KeyError:
+			raise RunTimeError("Cannot read lamp status: 'ST' function keyword not found in response")	
+		return status
 	
-	    	
+			
