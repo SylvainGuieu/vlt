@@ -129,7 +129,7 @@ def openTemplateSignature(file_name, path=None, prefix=None, extention=None):
         except IOError:
             log.warning("Cannot find isf file %r in any of %r directories"%(config['isf']['default'],config['isf']['path']))    
         else:    
-            isf = ISF(config.get("isffile", None))
+            isf = ISF(isffile)
             isf.parse()
             ISF_PARAMS = isf.parameters
 
