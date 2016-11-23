@@ -14,5 +14,5 @@ def find(name, path=None, prefix=None, extention=None, defaults={}):
         file_path = join(directory, name)
         if exists(file_path):
             return file_path
-    raise ValueError("cannot find file {0} in any of the path: {1}".format(name, path))        
+    raise IOError("cannot find file {0} in any of the path: {1}".format(name, path))        
         

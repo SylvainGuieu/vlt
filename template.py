@@ -2,12 +2,6 @@ from __future__ import print_function
 from .mainvlt import dotkey, undotkey
 from collections import OrderedDict
 
-def openTsf(tsfname, path=None):
-    filePath = findTsfFile(tsfname, path)
-    tsf = TSF(filePath)
-    tsf.parse()
-    
-
 
 def dict2param(name, d):
     ptype = d.get('TYPE', 'keyword')
@@ -24,7 +18,6 @@ def dict2param(name, d):
             label=d.get("LABEL",""), minihelp=d.get("MINIHELP",""), 
             hide=d.get("HIDE", "")
             )   
-
 
 
 class RangeError(ValueError):
@@ -47,6 +40,17 @@ class DumyRange(ParamRange):
 
 class NumberRange(ParamRange):
     def __init__(self, mini, maxi):
+        """ Template signature range reader of the for '1..34' 
+
+        Example
+        -------
+        >>> r = NumberRange.fom_str("1..9")
+        >>> r.parse(4) == 4
+        True
+        >> r.parse(13)
+        RangeError value must be <= 9, got 13
+        """
+
         self.mini = mini
         self.maxi = maxi
 
@@ -69,6 +73,16 @@ class NumberRange(ParamRange):
 
 
 class KeywordRange(ParamRange):
+    """ Template signature keyword list range 
+
+        Example
+        -------
+        >>> r = template.KeywordRange.from_str("FREE BEACON LAZER")
+        >>> r.parse("FREE") 
+        "FREE"
+        >>> r.parse("HOLE")
+        RangeError: value must one of 'FREE' 'BEACON' 'LAZER', got HOLE
+    """
     def __init__(self, lst):
         self.lst = list(lst)        
 
@@ -174,12 +188,6 @@ class TemplateSignatureParam(object):
         except RangeError:
             print ("Warning default value %r of '%s' is out of range"%(default,self.name))            
 
-        return 
-        try:
-            self._default = self._parse_range(default)
-        except Exception as e:
-            print("When trying to set default as '%s'"%default)
-            raise e 
     def getDefault(self):
         return self._default
     @property
@@ -345,7 +353,7 @@ class TemplateSignature(OrderedDict):
                 raise ValueError("all items value should be of instance TemplateSignatureParam got a '%s'"%(type(param)))
         self._header = header
         self._info = info
-
+        self._path = ""
         
     def __getitem__(self, item):
         item = dotkey(item)
@@ -368,12 +376,14 @@ class TemplateSignature(OrderedDict):
 
 
     @classmethod
-    def from_dict(cls, parameters, header={}):       
+    def from_dict(cls, parameters, header={}, path=""):       
         parameters  = parameters.copy()                
         tplinfo = parameters.pop("TPL", {})    
         parameters = [(key,dict2param(key,param)) for key,param in parameters.iteritems()]    
-        return cls(parameters, header=header, info=tplinfo) 
-            
+        new = cls(parameters, header=header, info=tplinfo) 
+        new.path = path
+        return new
+                
     @property
     def info(self):
         return self._info
@@ -390,19 +400,26 @@ class TemplateSignature(OrderedDict):
         new.__dict__.update(d)
         return new
 
+    def getPath(self):
+        return self._path
+
+    @property
+    def path(self):
+        return self._path        
+
     def restrict(self, patter_or_list):        
         items = []
         if isinstance(patter_or_list, basestring):
             pattern = patter_or_list
             for key, param in self.iteritems():
-                match, shorkey = param.match(pattern)
+                match, shortkey = param.match(pattern)
                 if match:
                     items.append( (shortkey, param))
         else:
             lst = patter_or_list
             for key in lst:
                 items.append( (key, self[key]) )         
-        new = self.__class__(items)        
+        new = self.__class__(items)
         self._copy_attr(new)
         return new
 
@@ -414,7 +431,7 @@ class TemplateSignature(OrderedDict):
 
 
 class ObdParam(object):
-    """ OBD Parameter is a TemplateSignatureParam with Value """
+    """ OBD Parameter is a TemplateSignatureParam with Value attached """
     def __init__(self, param, value):
         self._param = param
         self._value = param.parse(value)
@@ -461,9 +478,10 @@ class ObdParam(object):
 class Obd(list):
 
 
-    def __init__(self, templates, info={}):
+    def __init__(self, templates, info={}, path=""):
         super(Obd,self).__init__(templates)
         self._info = info
+        self._path = ""
 
     def __getitem__(self, item):                             
         value = super(Obd,self).__getitem__(item)
@@ -478,6 +496,13 @@ class Obd(list):
     
     def __repr__(self):
         return "\n\n".join("%r"%tpl for tpl in self)    
+
+    def getPath(self):
+        return self._path
+        
+    @property
+    def path(self):
+        return self._path        
 
     def append(self, tpl):
         if not isinstance(tpl, ObdTemplate):

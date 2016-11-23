@@ -3,7 +3,7 @@ Configuration file of the vlt package. to be changed with a lot of cautions
 some configuration can be changed 
 """
 import os
-
+from .log import Log
 
 INTROOT  = os.getenv("INTROOT") or ""
 INS_ROOT = os.getenv("INS_ROOT") or ""
@@ -32,19 +32,35 @@ config = {
         # list of directories containing the dictionary files
         "path": [os.path.join(INS_ROOT, "SYSTEM/Dictionary"),
                  os.path.join(VLTROOT, "config")],
-        # dictionary file prefix         
+        # dictionary file prefix, e.g openDictionary('ACS') will look for 'ESO-VLT-DIC.ACS'
         "prefix" : "ESO-VLT-DIC.",
+        # dictionary files has to extention
         "extention" : ""          
     }, 
         
  
     "tsf":{
-        "path": [os.path.join(INS_ROOT, "SYSTEM/COMMON/TEMPLATES/TSF")], 
+        "path": [os.path.join(INS_ROOT, "SYSTEM/COMMON/TEMPLATES/TSF"), 
+                 os.path.join(INS_ROOT, "SYSTEM/COMMON/CONFIGFILES"),
+                 os.path.join(VLTROOT, "config/INS_ROOT/SYSTEM/COMMON/TEMPLATES/TSF"),
+                 os.path.join(VLTROOT, "templates/forCALOB"), 
+                 os.path.join(VLTROOT, "templates/forBOB"),
+                 VLTROOT ## MMS.tsf is there. Not sure if it is usefull              
+                ], 
         "extention":"tsf", 
         "prefix":""
     },
-    "isffile": os.path.join(INS_ROOT, "SYSTEM/COMMON/CONFIGFILES/PIONIER.isf"),
-
+    "isf":{
+        "path": [os.path.join(INS_ROOT, "SYSTEM/COMMON/CONFIGFILES"),
+                 os.path.join(INTROOT, "config/INS_ROOT/SYSTEM/COMMON/CONFIGFILES")
+                ],
+        "extention":"isf",
+        "prefix":"",
+        ##
+        # The Instrument Summary File <default>.isf that is used for the instrument 
+        # The <default>.isf will be searched from the path list
+        "default":"default"        
+    },    
     "obd":{
         ## add :: for recursive directories 
         "path": [os.path.join(INS_ROOT, "SYSTEM/COMMON/TEMPLATES/OBD")], 
@@ -66,6 +82,13 @@ config = {
     # verbose level
     "verbose": 1
 }
+
+################################################################
+#
+#  INIT the log 
+#
+log  = Log()
+
 
 # debug local configuration
 # config["cdtpath"] += ["/Users/guieu/python/vlt/CDT"]

@@ -486,11 +486,13 @@ class Cdt(file):
 def findCdtFile(file_name, path=None, prefix=None, extention=None):
     """
     find the cdt file_name inside the path list.
-    by default path list is config["cdt"]["path"]
+    by default path list is in config["cdt"]["path"]
     """
     return ospath.find(file_name, path=path, prefix=prefix, 
                      extention=extention, defaults=cdtconfig
                     )
+
+findProcessFile = findCdtFile    
 
 def processClass(processname, path=None, prefix=None, extention=None):
     """

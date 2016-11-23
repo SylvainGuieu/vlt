@@ -67,7 +67,7 @@ class OBD(KeywordFile):
                 return groups[0], groups[i], groups[i+1]
         raise Exception("BUG none of the group founf in match")    
 
-def findOBDFile(file_name, path=None,  prefix=None, extention=None):
+def findObdFile(file_name, path=None,  prefix=None, extention=None):
     """
     find the tsf file_name inside the path list.
     by default path list is config["tsfpath"]
@@ -76,7 +76,7 @@ def findOBDFile(file_name, path=None,  prefix=None, extention=None):
                         defaults=config['obd']
                       )
 
-def openOBD(file_name, path=None,  prefix=None, extention=None):
+def openObd(file_name, path=None,  prefix=None, extention=None):
     obd_file = ospath.find(file_name, path=path, prefix=prefix, extention=extention, 
                         defaults=config['obd']
                       )
@@ -96,7 +96,10 @@ def openOBD(file_name, path=None,  prefix=None, extention=None):
         if tpl_id in TEMPLATES:
             tpl = TEMPLATES[tpl_id]                      
         else:
-            tpl = openTemplateSignature(tpl_id)
+            try:
+                tpl = openTemplateSignature(tpl_id)
+            except IOError as e:
+                raise IOError("Ob is attached to a tsf that cannot be opened : %s "%e)
             TEMPLATES[tpl_id] = tpl
 
 
@@ -108,7 +111,7 @@ def openOBD(file_name, path=None,  prefix=None, extention=None):
 
         obdtemplates.append(obdtpl)
 
-    return Obd(obdtemplates, info=obd)    
+    return Obd(obdtemplates, info=obd, path=obd_file)    
             
 
 

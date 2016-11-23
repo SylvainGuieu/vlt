@@ -1,10 +1,12 @@
 import re
 from .keywords import KeywordFile
-from ..config import config
+from ..config import config, log
 from ..template import TemplateSignature
 
 from . import ospath
 import os
+
+log = log.new(context="TSF/IO")
 
 # opened ISF_FILE
 ISF_PARAMS = None
@@ -27,7 +29,7 @@ def _isisf(value):
 def _isfvalue(f, value):
     isfvalue = value[4:]
     if f.isf is None or (not isfvalue in f.isf):
-        f.say("ISF linked value left has it is for %s " % value)
+        f.log.warning("ISF linked value left has it is for %s " % value)
         return value
     return f.isf[isfvalue]
 
@@ -45,7 +47,7 @@ class TSF(KeywordFile):
     _c5 = """[ \t]*[;]()(.*)"""
     # match : PAF.HDR.START # comment
     _c6 = """[ \t#]?.*()()"""
-
+    log = log
 
     reg = re.compile("""^([^ \t;#]+)({c1}|{c2}|{c3}|{c4}|{c5}|{c6})$""".format(
                     c1=_c1, c2=_c2, c3=_c3, c4=_c4, c5=_c5, c6=_c6
@@ -70,6 +72,7 @@ class TSF(KeywordFile):
             self.isf = isf_file.parameters
         else:
             self.isf = isf
+
 
     def key2path(self, key):
         keys = key.split(".")
@@ -104,20 +107,38 @@ def findTemplateSignatureFile(file_name, path=None,  prefix=None, extention=None
     return ospath.find(file_name, path=path, prefix=prefix, extention=extention, 
                         defaults=config['tsf']
                        )
-   
+
+def findInstrumentSummaryFile(file_name, path=None,  prefix=None, extention=None):
+    """
+    find the tsf file_name inside the path list.
+    by default path list is config["tsfpath"]
+    """
+    return ospath.find(file_name, path=path, prefix=prefix, extention=extention, 
+                        defaults=config['isf']
+                       )
+      
+
+
 def openTemplateSignature(file_name, path=None, prefix=None, extention=None):
     global ISF_PARAMS    
-    if ISF_PARAMS is None and config.get("isffile", None):
-        isf = ISF(config.get("isffile", None))
-        isf.parse()
-        ISF_PARAMS = isf.parameters
+
+
+    if ISF_PARAMS is None: #and config.get("isffile", None):
+        try:
+            isffile = findInstrumentSummaryFile(config['isf']['default'])
+        except IOError:
+            log.warning("Cannot find isf file %r in any of %r directories"%(config['isf']['default'],config['isf']['path']))    
+        else:    
+            isf = ISF(config.get("isffile", None))
+            isf.parse()
+            ISF_PARAMS = isf.parameters
 
     tsffile = findTemplateSignatureFile(file_name, path=path, prefix=prefix, 
                                         extention=extention)        
     f = TSF(tsffile, isf=ISF_PARAMS)
     f.parse()    
 
-    return TemplateSignature.from_dict(f.parameters,f.header)        
+    return TemplateSignature.from_dict(f.parameters,f.header, path=tsffile)        
 
 
         
